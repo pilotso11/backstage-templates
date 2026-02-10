@@ -1,0 +1,182 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: fullstack-app
+  title: Full-Stack Application
+  description: >
+    Composable full-stack app with optional frontend (React/Lit/TypeScript + Vite + Tailwind + Bun)
+    and backend (GoFiber + OpenAPI or FastAPI + OpenAPI). Multi-arch Docker, coverage badges,
+    GitHub Actions CI, branch protection, and Claude Code task list support.
+  tags:
+    - go
+    - python
+    - react
+    - lit
+    - typescript
+    - vite
+    - tailwind
+    - docker
+spec:
+  owner: user:default/guest
+  type: service
+
+  parameters:
+    - title: Application Details
+      required: [name, description, owner]
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Repository name (also becomes CLAUDE_CODE_TASK_LIST_ID and Docker image name)
+          pattern: "^[a-z0-9-]+$"
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: Short description of the application
+        owner:
+          title: GitHub Owner
+          type: string
+          description: GitHub username or organization that will own the repo
+
+    - title: Stack Selection
+      properties:
+        frontend:
+          title: Frontend
+          type: string
+          default: react
+          enum: [none, react, lit, typescript]
+          enumNames:
+            - "None (backend only)"
+            - "React + Tailwind"
+            - "Lit + Tailwind"
+            - "TypeScript + Tailwind"
+        backend:
+          title: Backend
+          type: string
+          default: gofiber
+          enum: [none, gofiber, fastapi]
+          enumNames:
+            - "None (frontend-only SPA)"
+            - "Go + GoFiber (OpenAPI via swaggo)"
+            - "Python + FastAPI (OpenAPI built-in)"
+
+    - title: Docker Hub
+      properties:
+        dockerhub_org:
+          title: Docker Hub Org / Username
+          type: string
+          description: Docker Hub organization or username for image pushes
+
+  steps:
+    - id: fetch-common
+      name: Fetch common files
+      action: fetch:template
+      input:
+        url: ./skeleton/common
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          frontend: ${{ parameters.frontend }}
+          backend: ${{ parameters.backend }}
+          dockerhub_org: ${{ parameters.dockerhub_org }}
+
+    - id: fetch-frontend-react
+      name: Fetch React frontend
+      if: ${{ parameters.frontend === "react" }}
+      action: fetch:template
+      input:
+        url: ./skeleton/frontend/react
+        targetPath: frontend
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          backend: ${{ parameters.backend }}
+
+    - id: fetch-frontend-lit
+      name: Fetch Lit frontend
+      if: ${{ parameters.frontend === "lit" }}
+      action: fetch:template
+      input:
+        url: ./skeleton/frontend/lit
+        targetPath: frontend
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          backend: ${{ parameters.backend }}
+
+    - id: fetch-frontend-typescript
+      name: Fetch TypeScript frontend
+      if: ${{ parameters.frontend === "typescript" }}
+      action: fetch:template
+      input:
+        url: ./skeleton/frontend/typescript
+        targetPath: frontend
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          backend: ${{ parameters.backend }}
+
+    - id: fetch-backend-gofiber
+      name: Fetch GoFiber backend
+      if: ${{ parameters.backend === "gofiber" }}
+      action: fetch:template
+      input:
+        url: ./skeleton/backend/gofiber
+        targetPath: backend
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+
+    - id: fetch-backend-fastapi
+      name: Fetch FastAPI backend
+      if: ${{ parameters.backend === "fastapi" }}
+      action: fetch:template
+      input:
+        url: ./skeleton/backend/fastapi
+        targetPath: backend
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+
+    - id: publish
+      name: Create GitHub repository
+      action: publish:github
+      input:
+        repoUrl: "github.com?owner=${{ parameters.owner }}&repo=${{ parameters.name }}"
+        description: ${{ parameters.description }}
+        repoVisibility: private
+        defaultBranch: main
+        protectDefaultBranch: true
+
+    - id: github-secret-username
+      name: Add DOCKERHUB_USERNAME secret
+      action: github:actions:secrets:create
+      input:
+        repoUrl: "github.com?owner=${{ parameters.owner }}&repo=${{ parameters.name }}"
+        secrets:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+    - id: github-secret-token
+      name: Add DOCKERHUB_TOKEN secret
+      action: github:actions:secrets:create
+      input:
+        repoUrl: "github.com?owner=${{ parameters.owner }}&repo=${{ parameters.name }}"
+        secrets:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - id: register
+      name: Register in Backstage catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        url: ${{ steps['register'].output.entityRef }}
