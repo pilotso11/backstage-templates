@@ -1,0 +1,21 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: [],
+  },
+  server: {
+    proxy: {
+{% if values.backend === "gofiber" %}
+      '/api': { target: 'http://localhost:3000', changeOrigin: true },
+{% elif values.backend === "fastapi" %}
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+{% endif %}
+    },
+  },
+  build: { outDir: 'dist' },
+})
