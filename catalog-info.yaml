@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: backstage-templates
+  description: Full-stack application templates
+spec:
+  targets:
+    - ./templates/app/template.yaml
