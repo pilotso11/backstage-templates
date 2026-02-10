@@ -1,0 +1,16 @@
+linters-settings:
+  goimports:
+    local-prefixes: github.com/${{ values.owner }}/${{ values.name }}
+
+linters:
+  enable:
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+
+run:
+  timeout: 5m
