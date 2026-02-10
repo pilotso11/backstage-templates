@@ -1,0 +1,25 @@
+export class App {
+  constructor(private readonly container: HTMLElement) {}
+
+  render(): void {
+    this.container.replaceChildren()
+
+    const wrapper = document.createElement('div')
+    wrapper.className = 'min-h-screen bg-gray-100 flex items-center justify-center'
+
+    const card = document.createElement('div')
+    card.className = 'bg-white rounded-lg shadow p-8 max-w-md w-full'
+
+    const heading = document.createElement('h1')
+    heading.className = 'text-3xl font-bold text-gray-900 mb-4'
+    heading.textContent = '${{ values.name }}'
+
+    const description = document.createElement('p')
+    description.className = 'text-gray-600'
+    description.textContent = '${{ values.description }}'
+
+    card.append(heading, description)
+    wrapper.appendChild(card)
+    this.container.appendChild(wrapper)
+  }
+}

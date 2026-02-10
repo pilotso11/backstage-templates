@@ -1,0 +1,26 @@
+{
+  "name": "${{ values.name }}-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.57.0",
+    "jsdom": "^25.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.5.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.0.0"
+  }
+}
