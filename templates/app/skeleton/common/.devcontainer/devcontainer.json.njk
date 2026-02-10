@@ -1,0 +1,17 @@
+{
+  "name": "${{ values.name }}",
+  "image": "pilotso11/fullstack-devc:dev",
+  "postStartCommand": "source ./setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "biomejs.biome",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

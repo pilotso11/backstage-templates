@@ -1,0 +1,57 @@
+# ${{ values.name }} - Root Makefile
+IMAGE_NAME := ${{ values.dockerhub_org }}/${{ values.name }}
+IMAGE_TAG  := latest
+
+.PHONY: build test lint docker run dev clean{% if values.backend === "gofiber" %} swagger init{% endif %}
+
+build:
+{% if values.backend !== "none" %}
+	$(MAKE) -C backend build
+{% endif %}
+{% if values.frontend !== "none" %}
+	$(MAKE) -C frontend build
+{% endif %}
+
+test:
+{% if values.backend !== "none" %}
+	$(MAKE) -C backend test
+{% endif %}
+{% if values.frontend !== "none" %}
+	$(MAKE) -C frontend test
+{% endif %}
+
+lint:
+{% if values.backend !== "none" %}
+	$(MAKE) -C backend lint
+{% endif %}
+{% if values.frontend !== "none" %}
+	$(MAKE) -C frontend lint
+{% endif %}
+
+{% if values.backend === "gofiber" %}
+swagger:
+	$(MAKE) -C backend swagger
+
+init:
+	$(MAKE) -C backend init
+
+{% endif %}
+docker:
+	docker build --platform linux/amd64 -t $(IMAGE_NAME):$(IMAGE_TAG) .
+
+run:
+{% if values.backend !== "none" %}
+	$(MAKE) -C backend run
+{% endif %}
+
+dev:
+	docker compose up
+
+clean:
+{% if values.backend !== "none" %}
+	$(MAKE) -C backend clean
+{% endif %}
+{% if values.frontend !== "none" %}
+	$(MAKE) -C frontend clean
+{% endif %}
+	docker compose down --rmi local

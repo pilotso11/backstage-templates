@@ -1,0 +1,59 @@
+# ${{ values.name }}
+
+${{ values.description }}
+
+{% if values.backend === "gofiber" %}
+![Coverage](coverage_badge.png)
+{% elif values.backend === "fastapi" %}
+[![Coverage](https://img.shields.io/badge/coverage-0%25-red)](coverage.xml)
+{% endif %}
+
+## Development
+
+```bash
+source ./setup.sh   # set CLAUDE_CODE_TASK_LIST_ID
+make dev            # start full local dev stack
+make test           # run all tests
+make lint           # run all linters
+make build          # build all
+make docker         # build Docker image locally
+```
+{% if values.backend !== "none" %}
+
+## API
+{% if values.backend === "gofiber" %}
+- Swagger UI: http://localhost:3000/swagger
+- Health: http://localhost:3000/healthz
+{% elif values.backend === "fastapi" %}
+- Swagger UI: http://localhost:8000/docs
+- OpenAPI JSON: http://localhost:8000/openapi.json
+- Health: http://localhost:8000/healthz
+{% endif %}
+{% endif %}
+{% if values.frontend !== "none" %}
+
+## Frontend
+
+- Dev server: http://localhost:5173 (proxies `/api` to backend)
+{% endif %}
+
+## Docker
+
+```bash
+make docker
+docker run -p 3000:3000 ${{ values.dockerhub_org }}/${{ values.name }}
+```
+
+## Bootstrap
+
+After cloning a generated repo:
+{% if values.backend === "gofiber" %}
+```bash
+cd backend && go mod tidy  # generate go.sum
+```
+{% endif %}
+{% if values.frontend !== "none" %}
+```bash
+cd frontend && bun install  # generate bun.lockb
+```
+{% endif %}
