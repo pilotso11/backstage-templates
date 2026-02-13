@@ -1,5 +1,5 @@
 # Frontend Makefile (Lit + Bun)
-.PHONY: install build test lint dev clean
+.PHONY: install build test lint dev clean e2e
 
 install:
 	bun install
@@ -18,3 +18,6 @@ dev: install
 
 clean:
 	rm -rf dist node_modules
+
+e2e: install
+	bun run test:e2e

@@ -117,3 +117,35 @@ jobs:
         run: bun run test
 
 {% endif %}
+{% if values.frontend !== "none" %}
+  e2e:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: bun run test:e2e
+
+      - name: Upload Playwright report
+        if: {% raw %}${{ failure() }}{% endraw %}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+{% endif %}

@@ -8,12 +8,14 @@
     "build": "tsc && vite build",
     "lint": "eslint src --ext ts --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "lit": "^3.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@vitest/coverage-v8": "^2.0.0",
