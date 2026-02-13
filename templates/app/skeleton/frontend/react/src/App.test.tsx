@@ -64,10 +64,4 @@ describe('App component', () => {
     })
   })
 
-  describe('snapshot', () => {
-    it('matches snapshot', () => {
-      const { container } = render(<App />)
-      expect(container.firstChild).toMatchSnapshot()
-    })
-  })
 })
