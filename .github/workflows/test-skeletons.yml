@@ -1,0 +1,143 @@
+name: Test Skeletons
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gofiber-backend:
+    name: GoFiber Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Render skeleton
+        run: |
+          python3 scripts/render-skeleton.py \
+            templates/app/skeleton/backend/gofiber \
+            rendered/backend \
+            --name testapp \
+            --owner testowner
+
+      - name: Init (go mod tidy)
+        working-directory: rendered/backend
+        run: make init
+
+      - name: Test
+        working-directory: rendered/backend
+        run: make test
+
+  fastapi-backend:
+    name: FastAPI Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Render skeleton
+        run: |
+          python3 scripts/render-skeleton.py \
+            templates/app/skeleton/backend/fastapi \
+            rendered/backend \
+            --name testapp \
+            --owner testowner
+
+      - name: Build (create venv + install deps)
+        working-directory: rendered/backend
+        run: make build
+
+      - name: Test
+        working-directory: rendered/backend
+        run: make test
+
+      - name: Lint
+        working-directory: rendered/backend
+        run: make lint
+
+  react-frontend:
+    name: React Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Render skeleton
+        run: |
+          python3 scripts/render-skeleton.py \
+            templates/app/skeleton/frontend/react \
+            rendered/frontend \
+            --name testapp \
+            --owner testowner
+
+      - name: Install dependencies
+        working-directory: rendered/frontend
+        run: bun install
+
+      - name: Test
+        working-directory: rendered/frontend
+        run: bun run test
+
+  lit-frontend:
+    name: Lit Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Render skeleton
+        run: |
+          python3 scripts/render-skeleton.py \
+            templates/app/skeleton/frontend/lit \
+            rendered/frontend \
+            --name testapp \
+            --owner testowner
+
+      - name: Install dependencies
+        working-directory: rendered/frontend
+        run: bun install
+
+      - name: Test
+        working-directory: rendered/frontend
+        run: bun run test
+
+  typescript-frontend:
+    name: TypeScript Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Render skeleton
+        run: |
+          python3 scripts/render-skeleton.py \
+            templates/app/skeleton/frontend/typescript \
+            rendered/frontend \
+            --name testapp \
+            --owner testowner
+
+      - name: Install dependencies
+        working-directory: rendered/frontend
+        run: bun install
+
+      - name: Test
+        working-directory: rendered/frontend
+        run: bun run test
