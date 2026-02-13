@@ -1,23 +1,116 @@
+"""Integration tests for ${{ values.name }} API."""
+import pytest
 from fastapi.testclient import TestClient
 from main import app
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=True)
 
 
-def test_health() -> None:
-    response = client.get("/healthz")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+# ── /healthz ──────────────────────────────────────────────────────────────────
+
+class TestHealthz:
+    def test_status_200(self) -> None:
+        response = client.get("/healthz")
+        assert response.status_code == 200
+
+    def test_returns_ok(self) -> None:
+        response = client.get("/healthz")
+        assert response.json() == {"status": "ok"}
+
+    def test_content_type_json(self) -> None:
+        response = client.get("/healthz")
+        assert "application/json" in response.headers["content-type"]
+
+    def test_post_method_not_allowed(self) -> None:
+        response = client.post("/healthz")
+        assert response.status_code == 405
+
+    def test_put_method_not_allowed(self) -> None:
+        response = client.put("/healthz")
+        assert response.status_code == 405
+
+    def test_delete_method_not_allowed(self) -> None:
+        response = client.delete("/healthz")
+        assert response.status_code == 405
 
 
-def test_hello() -> None:
-    response = client.get("/api/hello")
-    assert response.status_code == 200
-    assert "message" in response.json()
+# ── /api/hello ────────────────────────────────────────────────────────────────
+
+class TestHello:
+    def test_status_200(self) -> None:
+        response = client.get("/api/hello")
+        assert response.status_code == 200
+
+    def test_returns_message_field(self) -> None:
+        response = client.get("/api/hello")
+        data = response.json()
+        assert "message" in data
+
+    def test_message_is_string(self) -> None:
+        response = client.get("/api/hello")
+        assert isinstance(response.json()["message"], str)
+
+    def test_message_non_empty(self) -> None:
+        response = client.get("/api/hello")
+        assert len(response.json()["message"]) > 0
+
+    def test_content_type_json(self) -> None:
+        response = client.get("/api/hello")
+        assert "application/json" in response.headers["content-type"]
+
+    def test_post_method_not_allowed(self) -> None:
+        response = client.post("/api/hello")
+        assert response.status_code == 405
 
 
-def test_openapi_schema() -> None:
-    response = client.get("/openapi.json")
-    assert response.status_code == 200
-    schema = response.json()
-    assert schema["info"]["title"] == "${{ values.name }} API"
+# ── OpenAPI ───────────────────────────────────────────────────────────────────
+
+class TestOpenAPI:
+    def test_openapi_json_status_200(self) -> None:
+        response = client.get("/openapi.json")
+        assert response.status_code == 200
+
+    def test_openapi_title_matches_app(self) -> None:
+        response = client.get("/openapi.json")
+        schema = response.json()
+        assert schema["info"]["title"] == "${{ values.name }} API"
+
+    def test_openapi_version_present(self) -> None:
+        response = client.get("/openapi.json")
+        schema = response.json()
+        assert "version" in schema["info"]
+
+    def test_openapi_description_present(self) -> None:
+        response = client.get("/openapi.json")
+        schema = response.json()
+        assert "description" in schema["info"]
+
+    def test_openapi_has_paths(self) -> None:
+        response = client.get("/openapi.json")
+        schema = response.json()
+        assert "paths" in schema
+        assert len(schema["paths"]) > 0
+
+    def test_openapi_healthz_path_present(self) -> None:
+        response = client.get("/openapi.json")
+        paths = response.json()["paths"]
+        assert "/healthz" in paths
+
+    def test_openapi_hello_path_present(self) -> None:
+        response = client.get("/openapi.json")
+        paths = response.json()["paths"]
+        assert "/api/hello" in paths
+
+    def test_docs_ui_accessible(self) -> None:
+        response = client.get("/docs")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+
+# ── 404 for unknown routes ────────────────────────────────────────────────────
+
+class TestNotFound:
+    @pytest.mark.parametrize("path", ["/notfound", "/api/notfound", "/api/"])
+    def test_unknown_routes_return_404(self, path: str) -> None:
+        response = client.get(path)
+        assert response.status_code == 404
