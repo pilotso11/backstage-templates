@@ -1,42 +1,73 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { AppRoot } from './app-root.ts'
 
-describe('AppRoot', () => {
-  let el: AppRoot
+describe('AppRoot custom element', () => {
+  describe('registration', () => {
+    it('is registered in the custom element registry', () => {
+      expect(customElements.get('app-root')).toBeDefined()
+    })
 
-  beforeEach(async () => {
-    el = document.createElement('app-root') as AppRoot
-    document.body.appendChild(el)
-    // Wait for Lit's update cycle
-    await el.updateComplete
+    it('is the AppRoot class', () => {
+      expect(customElements.get('app-root')).toBe(AppRoot)
+    })
   })
 
-  afterEach(() => {
-    document.body.removeChild(el)
+  describe('lifecycle', () => {
+    let el: AppRoot
+
+    beforeEach(async () => {
+      el = document.createElement('app-root') as AppRoot
+      document.body.appendChild(el)
+      await el.updateComplete
+    })
+
+    afterEach(() => {
+      if (el.parentNode) el.parentNode.removeChild(el)
+    })
+
+    it('is an instance of AppRoot', () => {
+      expect(el).toBeInstanceOf(AppRoot)
+    })
+
+    it('is an instance of HTMLElement', () => {
+      expect(el).toBeInstanceOf(HTMLElement)
+    })
+
+    it('is attached to the DOM', () => {
+      expect(document.contains(el)).toBe(true)
+    })
+
+    it('has a shadow root', () => {
+      expect(el.shadowRoot).not.toBeNull()
+    })
+
+    it('updateComplete resolves to true', async () => {
+      const result = await el.updateComplete
+      expect(result).toBe(true)
+    })
   })
 
-  it('is registered as a custom element', () => {
-    expect(customElements.get('app-root')).toBeDefined()
+  describe('styles', () => {
+    it('has static styles defined', () => {
+      expect(AppRoot.styles).toBeDefined()
+    })
   })
 
-  it('is an instance of AppRoot', () => {
-    expect(el).toBeInstanceOf(AppRoot)
-  })
+  describe('querying', () => {
+    let el: AppRoot
 
-  it('renders a shadow root', () => {
-    expect(el.shadowRoot).not.toBeNull()
-  })
+    beforeEach(async () => {
+      el = document.createElement('app-root') as AppRoot
+      document.body.appendChild(el)
+      await el.updateComplete
+    })
 
-  it('renders a host element with display block', () => {
-    // Lit applies :host { display: block } via static styles
-    expect(AppRoot.styles).toBeDefined()
-  })
+    afterEach(() => {
+      if (el.parentNode) el.parentNode.removeChild(el)
+    })
 
-  it('renders into the document', () => {
-    expect(document.querySelector('app-root')).not.toBeNull()
-  })
-
-  it('has an updateComplete promise', () => {
-    expect(el.updateComplete).toBeInstanceOf(Promise)
+    it('can be selected by tag name', () => {
+      expect(document.querySelector('app-root')).not.toBeNull()
+    })
   })
 })

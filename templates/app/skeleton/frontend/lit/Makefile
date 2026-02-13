@@ -1,5 +1,5 @@
 # Frontend Makefile (Lit + Bun)
-.PHONY: install build test lint dev clean e2e
+.PHONY: install build test test-ui lint dev clean e2e
 
 install:
 	bun install
@@ -9,6 +9,9 @@ build: install
 
 test: install
 	bun run test
+
+test-ui: install
+	bun run test:ui
 
 lint: install
 	bun run lint
