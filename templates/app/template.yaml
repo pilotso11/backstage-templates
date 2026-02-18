@@ -160,7 +160,7 @@ spec:
       name: Register in Backstage catalog
       action: catalog:register
       input:
-        catalogInfoUrl: https://github.com/${{ parameters.owner }}/${{ parameters.name }}/blob/main/catalog-info.yaml
+        catalogInfoUrl: https://raw.githubusercontent.com/${{ parameters.owner }}/${{ parameters.name }}/main/catalog-info.yaml
 
     - id: register-with-flux
       name: Register with cluster (open PR)
