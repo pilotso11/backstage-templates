@@ -160,8 +160,7 @@ spec:
       name: Register in Backstage catalog
       action: catalog:register
       input:
-        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
-        catalogInfoPath: /catalog-info.yaml
+        catalogInfoUrl: https://github.com/${{ parameters.owner }}/${{ parameters.name }}/blob/main/catalog-info.yaml
 
     - id: register-with-flux
       name: Register with cluster (open PR)
