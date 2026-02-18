@@ -37,7 +37,11 @@ spec:
         owner:
           title: GitHub Owner
           type: string
-          description: GitHub username or organization that will own the repo
+          description: >
+            GitHub username or organization that will own the repo.
+            IMPORTANT: Your GitHub token must have write permissions for this owner/org.
+            For personal projects, use your GitHub username (e.g., "pilotso11").
+            For company projects, ensure you have been granted repo creation permissions in the organization.
 
     - title: Stack Selection
       properties:
