@@ -151,21 +151,6 @@ spec:
         defaultBranch: main
         protectDefaultBranch: true
 
-    - id: github-secret-username
-      name: Add DOCKERHUB_USERNAME secret
-      action: github:actions:secrets:create
-      input:
-        repoUrl: "github.com?owner=${{ parameters.owner }}&repo=${{ parameters.name }}"
-        secrets:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-
-    - id: github-secret-token
-      name: Add DOCKERHUB_TOKEN secret
-      action: github:actions:secrets:create
-      input:
-        repoUrl: "github.com?owner=${{ parameters.owner }}&repo=${{ parameters.name }}"
-        secrets:
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - id: register
       name: Register in Backstage catalog
@@ -174,9 +159,19 @@ spec:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
         catalogInfoPath: /catalog-info.yaml
 
+    - id: register-with-flux
+      name: Register with cluster (open PR)
+      action: oshers:register-with-flux
+      input:
+        appName: ${{ parameters.name }}
+        repoOwner: ${{ parameters.owner }}
+        githubToken: ${{ secrets.GITHUB_TOKEN }}
+
   output:
     links:
       - title: Repository
         url: ${{ steps['publish'].output.remoteUrl }}
       - title: Open in catalog
         url: ${{ steps['register'].output.entityRef }}
+      - title: Cluster registration PR
+        url: ${{ steps['register-with-flux'].output.pullRequestUrl }}
