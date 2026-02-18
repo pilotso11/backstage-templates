@@ -1,8 +1,53 @@
 apiVersion: backstage.io/v1alpha1
-kind: Location
+kind: Template
 metadata:
-  name: backstage-templates
-  description: Full-stack application templates
+  name: fullstack-app-template
+  description: Full-stack application template with React frontend and GoFiber/FastAPI backend
+  tags:
+    - fullstack
+    - react
+    - gofiber
+    - fastapi
 spec:
-  targets:
-    - ./templates/app/template.yaml
+  type: software-template
+  parameters:
+    - title: Name
+      name: name
+      type: string
+      required: true
+      description: Unique name of the component
+
+    - title: Description
+      name: description
+      type: string
+      required: true
+      description: Description of the component
+
+    - title: Owner
+      name: owner
+      type: string
+      required: true
+      description: Owner of the component (GitHub username or organization)
+
+    - title: Frontend
+      name: frontend
+      type: enum
+      enum: ['react', 'lit', 'typescript']
+      required: true
+      description: Frontend framework
+
+    - title: Backend
+      name: backend
+      type: enum
+      enum: ['gofiber', 'fastapi']
+      required: true
+      description: Backend framework
+
+    - title: Docker Hub Organization
+      name: dockerhub_org
+      type: string
+      required: true
+      description: Docker Hub organization for pushing images
+
+  # This tells Backstage where to find the actual template.yaml file
+  url: ./templates/app/template.yaml
