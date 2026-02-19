@@ -1,7 +1,7 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: fullstack-app
+  name: app-scaffolder
   title: Full-Stack Application
   description: >
     Composable full-stack app with optional frontend (React/Lit/TypeScript + Vite + Tailwind + Bun)
