@@ -1,14 +1,14 @@
-# Deployment workflow — configure for your target environment.
-# Currently set to manual trigger only (workflow_dispatch).
+# Flux GitOps deployment — triggered by semver release tags.
+# The Docker workflow builds and pushes the image on tag push,
+# then Flux ImagePolicy picks up the new tag and reconciles.
 #
-# Suggested approaches:
-#   - SSH deploy to self-hosted server
-#   - Fly.io: flyctl deploy
-#   - Render: render deploy
-#   - Kubernetes: kubectl set image / Flux GitOps
+# This workflow can notify Flux to reconcile immediately or
+# perform additional deployment tasks (smoke tests, notifications).
 name: Deploy
 
 on:
+  push:
+    tags: ["v*.*.*"]
   workflow_dispatch:
     inputs:
       environment:
@@ -27,7 +27,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Determine environment
+        id: env
+        run: |
+          if [ -n "${{ inputs.environment }}" ]; then
+            echo "target=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "target=production" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy
         env:
-          TARGET_ENV: ${{ inputs.environment }}
-        run: echo "TODO - Configure deployment for ${TARGET_ENV}"
+          TARGET_ENV: ${{ steps.env.outputs.target }}
+        run: |
+          echo "Deploying ${GITHUB_REF_NAME:-manual} to ${TARGET_ENV}"
+          echo "TODO — Add Flux reconciliation trigger or deployment steps"
