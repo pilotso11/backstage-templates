@@ -1,20 +1,33 @@
-# TODO: Configure deployment target
+# Deployment workflow — configure for your target environment.
+# Currently set to manual trigger only (workflow_dispatch).
+#
 # Suggested approaches:
 #   - SSH deploy to self-hosted server
 #   - Fly.io: flyctl deploy
 #   - Render: render deploy
-#   - Kubernetes: kubectl set image
-#
-# Uncomment and configure when ready:
-#
-# name: Deploy
-# on:
-#   push:
-#     branches: [main]
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     needs: [docker]
-#     steps:
-#       - name: Deploy
-#         run: echo "Configure deployment here"
+#   - Kubernetes: kubectl set image / Flux GitOps
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+        run: echo "TODO - Configure deployment for ${TARGET_ENV}"
