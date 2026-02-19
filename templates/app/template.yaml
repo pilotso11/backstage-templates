@@ -151,6 +151,11 @@ spec:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
 
+    - id: strip-njk
+      name: Strip .njk file extensions
+      action: oshers:strip-njk
+      input: {}
+
     - id: publish
       name: Create GitHub repository
       action: publish:github
