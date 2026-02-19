@@ -17,7 +17,7 @@ metadata:
     - tailwind
     - docker
 spec:
-  owner: user:default/guest
+  owner: user:seth
   type: service
 
   parameters:
