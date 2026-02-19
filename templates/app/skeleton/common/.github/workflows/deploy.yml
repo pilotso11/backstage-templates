@@ -27,12 +27,12 @@ jobs:
   deploy:
     name: Trigger Flux Reconciliation
     runs-on: ubuntu-latest
-    if: ${{ secrets.FLUX_WEBHOOK_URL != '' }}
+    env:
+      WEBHOOK_URL: ${{ secrets.FLUX_WEBHOOK_URL }}
+      WEBHOOK_TOKEN: ${{ secrets.FLUX_WEBHOOK_TOKEN }}
     steps:
       - name: Trigger Flux reconcile
-        env:
-          WEBHOOK_URL: ${{ secrets.FLUX_WEBHOOK_URL }}
-          WEBHOOK_TOKEN: ${{ secrets.FLUX_WEBHOOK_TOKEN }}
+        if: ${{ env.WEBHOOK_URL != '' }}
         run: |
           echo "Triggering Flux reconciliation for ${GITHUB_REF_NAME:-manual}"
           curl -s -X POST "${WEBHOOK_URL}" \
