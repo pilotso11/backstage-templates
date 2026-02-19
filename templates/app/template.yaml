@@ -78,6 +78,7 @@ spec:
       action: fetch:template
       input:
         url: ./skeleton/common
+        templateFileExtension: true
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
@@ -93,6 +94,7 @@ spec:
       input:
         url: ./skeleton/frontend/react
         targetPath: frontend
+        templateFileExtension: true
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
@@ -105,6 +107,7 @@ spec:
       input:
         url: ./skeleton/frontend/lit
         targetPath: frontend
+        templateFileExtension: true
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
@@ -117,6 +120,7 @@ spec:
       input:
         url: ./skeleton/frontend/typescript
         targetPath: frontend
+        templateFileExtension: true
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
@@ -129,6 +133,7 @@ spec:
       input:
         url: ./skeleton/backend/gofiber
         targetPath: backend
+        templateFileExtension: true
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
@@ -141,6 +146,7 @@ spec:
       input:
         url: ./skeleton/backend/fastapi
         targetPath: backend
+        templateFileExtension: true
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
