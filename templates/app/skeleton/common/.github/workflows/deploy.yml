@@ -1,9 +1,12 @@
 # Flux GitOps deployment — triggered by semver release tags.
 # The Docker workflow builds and pushes the image on tag push,
-# then Flux ImagePolicy picks up the new tag and reconciles.
+# then this workflow triggers an immediate Flux reconciliation
+# via the notification controller's webhook receiver.
 #
-# This workflow can notify Flux to reconcile immediately or
-# perform additional deployment tasks (smoke tests, notifications).
+# Required secrets:
+#   FLUX_WEBHOOK_URL   — Full URL of the Flux Receiver endpoint
+#                        (e.g. https://flux.example.com/hook/<receiver-hash>)
+#   FLUX_WEBHOOK_TOKEN — Shared HMAC token configured in the Receiver resource
 name: Deploy
 
 on:
@@ -22,23 +25,19 @@ on:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Trigger Flux Reconciliation
     runs-on: ubuntu-latest
+    if: ${{ secrets.FLUX_WEBHOOK_URL != '' }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Determine environment
-        id: env
-        run: |
-          if [ -n "${{ inputs.environment }}" ]; then
-            echo "target=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "target=production" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Deploy
+      - name: Trigger Flux reconcile
         env:
-          TARGET_ENV: ${{ steps.env.outputs.target }}
+          WEBHOOK_URL: ${{ secrets.FLUX_WEBHOOK_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.FLUX_WEBHOOK_TOKEN }}
         run: |
-          echo "Deploying ${GITHUB_REF_NAME:-manual} to ${TARGET_ENV}"
-          echo "TODO — Add Flux reconciliation trigger or deployment steps"
+          echo "Triggering Flux reconciliation for ${GITHUB_REF_NAME:-manual}"
+          curl -s -X POST "${WEBHOOK_URL}" \
+            -H "Content-Type: application/json" \
+            -H "X-Signature: sha256=$(echo -n '' | openssl dgst -sha256 -hmac "${WEBHOOK_TOKEN}" | awk '{print $2}')" \
+            -d '{}' \
+            --fail --show-error
+          echo "Flux reconciliation triggered"
