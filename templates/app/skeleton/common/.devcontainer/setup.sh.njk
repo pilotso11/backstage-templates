@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e
+
+echo "🚀 Setting up ${{ values.name }} devcontainer..."
+
+{% if values.backend == 'gofiber' %}
+echo "📦 Installing Go dependencies..."
+go mod download
+go install github.com/swaggo/swag/cmd/swag@latest
+
+{% elif values.backend == 'fastapi' %}
+echo "📦 Installing Python dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install pytest pytest-cov black ruff mypy
+
+{% endif %}
+{% if values.frontend != 'none' %}
+echo "📦 Installing frontend dependencies..."
+bun install
+{% endif %}
+
+echo "✅ Devcontainer setup complete!"
+echo "🎯 Run 'make dev' to start the development server"

@@ -17,6 +17,9 @@ metadata:
     - url: https://hub.docker.com/r/${{ values.dockerhub_org }}/${{ values.name }}
       title: Docker Hub
       icon: docker
+    - url: https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/${{ values.owner }}/${{ values.name }}
+      title: Open in Dev Container
+      icon: code
 spec:
   type: service
   lifecycle: experimental
