@@ -51,8 +51,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  notify:
+    name: Trigger Flux Deploy
+    needs: [docker]
+    if: {% raw %}${{ github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' }}{% endraw %}
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger Flux reconciliation
-        if: {% raw %}${{ success() && github.event_name != 'pull_request' && env.HAS_DOCKERHUB != '' }}{% endraw %}
         env:
           WEBHOOK_URL: {% raw %}${{ secrets.FLUX_WEBHOOK_URL }}{% endraw %}
           WEBHOOK_TOKEN: {% raw %}${{ secrets.FLUX_WEBHOOK_TOKEN }}{% endraw %}
