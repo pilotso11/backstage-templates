@@ -74,7 +74,7 @@ spec:
         containerPort:
           title: Container Port
           type: number
-          description: Application container port (default: 8000 for FastAPI, 3000 for GoFiber, 80 for frontend-only)
+          description: "Application container port (default: 8000 for FastAPI, 3000 for GoFiber, 80 for frontend-only)"
 
   steps:
     - id: fetch-common
