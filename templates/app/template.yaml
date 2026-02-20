@@ -2,7 +2,7 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: app-scaffolder
-  title: Full-Stack Application v0.0.21
+  title: Full-Stack Application v0.0.22
   description: >
     Composable full-stack app with optional frontend (React/Lit/TypeScript + Vite + Tailwind + Bun)
     and backend (GoFiber + OpenAPI or FastAPI + OpenAPI). Multi-arch Docker, coverage badges,
@@ -71,6 +71,10 @@ spec:
           title: Docker Hub Org / Username
           type: string
           description: Docker Hub organization or username for image pushes
+        containerPort:
+          title: Container Port
+          type: number
+          description: Application container port (default: 8000 for FastAPI, 8080 for GoFiber)
 
   steps:
     - id: fetch-common
@@ -180,6 +184,7 @@ spec:
         appName: ${{ parameters.name }}
         repoOwner: ${{ parameters.owner }}
         dockerhubOrg: ${{ parameters.dockerhub_org }}
+        containerPort: ${{ parameters.containerPort }}
         githubToken: ${{ secrets.GITHUB_TOKEN }}
 
   output:
