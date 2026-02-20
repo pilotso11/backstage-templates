@@ -29,10 +29,10 @@ COPY --from=backend-builder /app/server .
 COPY --from=frontend-builder /app/frontend/dist ./dist
 ENV STATIC_FILES_DIR=./dist
 {% endif %}
-ENV PORT=3000
+ENV PORT=8000
 ENV TZ=Europe/London
-EXPOSE 3000
-HEALTHCHECK CMD curl -f http://localhost:3000/healthz
+EXPOSE 8000
+HEALTHCHECK CMD curl -f http://localhost:8000/healthz
 ENTRYPOINT ["/app/server"]
 
 {% elif values.backend === "fastapi" %}

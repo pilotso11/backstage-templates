@@ -17,7 +17,7 @@ import (
 // @title           ${{ values.name }} API
 // @version         1.0
 // @description     ${{ values.description }}
-// @host            localhost:3000
+// @host            localhost:8000
 // @BasePath        /api
 func main() {
 	app := fiber.New()
@@ -39,7 +39,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "8000"
 	}
 	log.Fatal(app.Listen(":" + port))
 }

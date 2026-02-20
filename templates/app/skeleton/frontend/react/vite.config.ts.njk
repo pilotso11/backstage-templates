@@ -5,9 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-{% if values.backend === "gofiber" %}
-      '/api': { target: 'http://localhost:3000', changeOrigin: true },
-{% elif values.backend === "fastapi" %}
+{% if values.backend !== "none" %}
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
 {% endif %}
     },

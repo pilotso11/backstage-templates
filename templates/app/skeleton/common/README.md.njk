@@ -22,8 +22,8 @@ make docker         # build Docker image locally
 
 ## API
 {% if values.backend === "gofiber" %}
-- Swagger UI: http://localhost:3000/swagger
-- Health: http://localhost:3000/healthz
+- Swagger UI: http://localhost:8000/swagger
+- Health: http://localhost:8000/healthz
 {% elif values.backend === "fastapi" %}
 - Swagger UI: http://localhost:8000/docs
 - OpenAPI JSON: http://localhost:8000/openapi.json
@@ -41,7 +41,7 @@ make docker         # build Docker image locally
 
 ```bash
 make docker
-docker run -p 3000:3000 ${{ values.dockerhub_org }}/${{ values.name }}
+docker run -p 8000:8000 ${{ values.dockerhub_org }}/${{ values.name }}
 ```
 
 ## Bootstrap
