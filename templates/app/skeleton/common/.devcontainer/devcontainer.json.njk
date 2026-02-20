@@ -25,5 +25,9 @@
       "installOhMyZsh": true,
       "upgradePackages": true
     }
-  }
+  }{% if values.enableSSO %},
+  "containerEnv": {
+    "DEV_MODE": "true",
+    "DEV_USER_EMAIL": "dev@example.com"
+  }{% endif %}
 }

@@ -1,0 +1,38 @@
+"""OAuth2 proxy authentication helpers.
+
+In production, user info comes from X-Auth-Request-* headers set by
+oauth2-proxy via Traefik ForwardAuth. In development (DEV_MODE=true),
+a simulated user is returned from the DEV_USER_EMAIL env var.
+"""
+
+import os
+from dataclasses import dataclass
+
+from fastapi import Request
+
+_DEV_MODE = os.getenv("DEV_MODE", "").lower() == "true"
+_DEV_USER_EMAIL = os.getenv("DEV_USER_EMAIL", "dev@example.com")
+
+
+@dataclass
+class AuthUser:
+    email: str
+    user: str
+    username: str
+
+
+def get_auth_user(request: Request) -> AuthUser:
+    """Get the authenticated user from OAuth2 headers or dev fallback."""
+    if _DEV_MODE:
+        return AuthUser(
+            email=_DEV_USER_EMAIL,
+            user=_DEV_USER_EMAIL,
+            username="Dev User",
+        )
+
+    email = request.headers.get("X-Auth-Request-Email") or request.headers.get(
+        "X-Auth-Request-User", ""
+    )
+    username = request.headers.get("X-Auth-Request-Preferred-Username", email)
+
+    return AuthUser(email=email, user=email, username=username)

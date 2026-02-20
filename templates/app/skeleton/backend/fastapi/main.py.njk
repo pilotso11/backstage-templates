@@ -1,7 +1,9 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+
+from auth import AuthUser, get_auth_user
 
 app = FastAPI(
     title="${{ values.name }} API",
@@ -20,6 +22,12 @@ async def health() -> dict[str, str]:
 async def hello() -> dict[str, str]:
     """Returns a hello message."""
     return {"message": "Hello from ${{ values.name }}!"}
+
+
+@app.get("/api/whoami", tags=["auth"])
+async def whoami(request: Request) -> AuthUser:
+    """Get current authenticated user."""
+    return get_auth_user(request)
 
 
 # Serve frontend static files if STATIC_FILES_DIR is set

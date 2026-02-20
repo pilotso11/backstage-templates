@@ -1,0 +1,45 @@
+package main
+
+import (
+	"os"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+// AuthUser represents the authenticated user from OAuth2 headers.
+type AuthUser struct {
+	Email    string `json:"email"`
+	User     string `json:"user"`
+	Username string `json:"username"`
+}
+
+// GetAuthUser extracts the user from OAuth2 proxy headers, falling back
+// to DEV_USER_EMAIL in development mode.
+func GetAuthUser(c *fiber.Ctx) AuthUser {
+	if os.Getenv("DEV_MODE") == "true" {
+		email := os.Getenv("DEV_USER_EMAIL")
+		if email == "" {
+			email = "dev@example.com"
+		}
+		return AuthUser{
+			Email:    email,
+			User:     email,
+			Username: "Dev User",
+		}
+	}
+
+	email := c.Get("X-Auth-Request-Email")
+	if email == "" {
+		email = c.Get("X-Auth-Request-User")
+	}
+	username := c.Get("X-Auth-Request-Preferred-Username")
+	if username == "" {
+		username = email
+	}
+
+	return AuthUser{
+		Email:    email,
+		User:     email,
+		Username: username,
+	}
+}
