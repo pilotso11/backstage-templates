@@ -5,6 +5,18 @@ metadata:
   description: ${{ values.description }}
   annotations:
     github.com/project-slug: ${{ values.owner }}/${{ values.name }}
+    backstage.io/kubernetes-id: ${{ values.name }}
+    backstage.io/techdocs-ref: url:https://github.com/${{ values.owner }}/${{ values.name }}
+  links:
+    - url: https://${{ values.name }}.staging.oshers.com
+      title: Live Site
+      icon: web
+    - url: https://github.com/${{ values.owner }}/${{ values.name }}/actions
+      title: CI/CD Pipelines
+      icon: github
+    - url: https://hub.docker.com/r/${{ values.dockerhub_org }}/${{ values.name }}
+      title: Docker Hub
+      icon: docker
 spec:
   type: service
   lifecycle: experimental
