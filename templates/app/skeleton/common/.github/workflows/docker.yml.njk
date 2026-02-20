@@ -54,7 +54,7 @@ jobs:
   notify:
     name: Trigger Flux Deploy
     needs: [docker]
-    if: {% raw %}${{ github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' }}{% endraw %}
+    if: {% raw %}${{ github.event_name != 'pull_request' }}{% endraw %}
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Flux reconciliation
