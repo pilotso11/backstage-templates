@@ -1,0 +1,64 @@
+package main
+
+import (
+	"math"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+// ComputeRequest is the input for the compute endpoint.
+type ComputeRequest struct {
+	A  float64 `json:"a"`
+	Op string  `json:"op"`
+	B  float64 `json:"b"`
+}
+
+// ComputeResponse is the output from the compute endpoint.
+type ComputeResponse struct {
+	A      float64 `json:"a"`
+	Op     string  `json:"op"`
+	B      float64 `json:"b"`
+	Result float64 `json:"result"`
+}
+
+// computeHandler godoc
+// @Summary     Compute a math operation
+// @Tags        compute
+// @Accept      json
+// @Produce     json
+// @Param       body body ComputeRequest true "Compute request"
+// @Success     200 {object} ComputeResponse
+// @Failure     400 {object} map[string]string
+// @Router      /api/compute [post]
+func computeHandler(c *fiber.Ctx) error {
+	var req ComputeRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	var result float64
+	switch req.Op {
+	case "add":
+		result = req.A + req.B
+	case "sub":
+		result = req.A - req.B
+	case "mul":
+		result = req.A * req.B
+	case "div":
+		if req.B == 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "division by zero"})
+		}
+		result = req.A / req.B
+	case "pow":
+		result = math.Pow(req.A, req.B)
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid operation"})
+	}
+
+	return c.JSON(ComputeResponse{
+		A:      req.A,
+		Op:     req.Op,
+		B:      req.B,
+		Result: result,
+	})
+}

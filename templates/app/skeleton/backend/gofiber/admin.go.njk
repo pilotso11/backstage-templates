@@ -1,0 +1,58 @@
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"sync"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+// AdminUsersResponse is the response from the admin users endpoint.
+type AdminUsersResponse struct {
+	Authorized bool     `json:"authorized"`
+	Users      []string `json:"users"`
+}
+
+var (
+	authorizedUsers     []string
+	authorizedUsersOnce sync.Once
+)
+
+func loadAuthorizedUsers() []string {
+	authorizedUsersOnce.Do(func() {
+		data, err := os.ReadFile("authorized_users.json")
+		if err != nil {
+			authorizedUsers = []string{}
+			return
+		}
+		if err := json.Unmarshal(data, &authorizedUsers); err != nil {
+			authorizedUsers = []string{}
+		}
+	})
+	return authorizedUsers
+}
+
+// adminUsersHandler godoc
+// @Summary     List authorized users (admin)
+// @Tags        admin
+// @Produce     json
+// @Success     200 {object} AdminUsersResponse
+// @Router      /api/admin/users [get]
+func adminUsersHandler(c *fiber.Ctx) error {
+	user := GetAuthUser(c)
+	users := loadAuthorizedUsers()
+
+	authorized := false
+	for _, u := range users {
+		if u == user.Email {
+			authorized = true
+			break
+		}
+	}
+
+	return c.JSON(AdminUsersResponse{
+		Authorized: authorized,
+		Users:      users,
+	})
+}

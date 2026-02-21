@@ -8,9 +8,10 @@ import (
 
 // AuthUser represents the authenticated user from OAuth2 headers.
 type AuthUser struct {
-	Email    string `json:"email"`
-	User     string `json:"user"`
-	Username string `json:"username"`
+	Email         string `json:"email"`
+	User          string `json:"user"`
+	Username      string `json:"username"`
+	Authenticated bool   `json:"authenticated"`
 }
 
 // GetAuthUser extracts the user from OAuth2 proxy headers, falling back
@@ -22,9 +23,10 @@ func GetAuthUser(c *fiber.Ctx) AuthUser {
 			email = "dev@example.com"
 		}
 		return AuthUser{
-			Email:    email,
-			User:     email,
-			Username: "Dev User",
+			Email:         email,
+			User:          email,
+			Username:      "Dev User",
+			Authenticated: true,
 		}
 	}
 
@@ -38,8 +40,9 @@ func GetAuthUser(c *fiber.Ctx) AuthUser {
 	}
 
 	return AuthUser{
-		Email:    email,
-		User:     email,
-		Username: username,
+		Email:         email,
+		User:          email,
+		Username:      username,
+		Authenticated: email != "",
 	}
 }
