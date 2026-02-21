@@ -24,12 +24,11 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:default/${{ values.backstageUser }}
-{%- if values.backend !== "none" %}
-
+{% if values.backend !== "none" -%}
   providesApis:
     - ${{ values.name }}-api
-{%- endif %}
-{%- if values.backend !== "none" %}
+{% endif -%}
+{% if values.backend !== "none" -%}
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
@@ -40,13 +39,11 @@ spec:
   type: openapi
   lifecycle: experimental
   owner: user:default/${{ values.backstageUser }}
-{%- if values.backend === "gofiber" %}
-
+{% if values.backend === "gofiber" -%}
   definition:
     $text: https://${{ values.name }}.staging.oshers.com/swagger/doc.json
-{%- elif values.backend === "fastapi" %}
-
+{% elif values.backend === "fastapi" -%}
   definition:
     $text: https://${{ values.name }}.staging.oshers.com/openapi.json
-{%- endif %}
+{% endif -%}
 {% endif %}
