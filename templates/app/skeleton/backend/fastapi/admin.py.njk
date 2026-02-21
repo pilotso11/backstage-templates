@@ -27,7 +27,9 @@ def _load_authorized_users() -> list[str]:
 
 
 @router.get(
-    "/api/admin/users", tags=["admin"], response_model=AdminUsersResponse
+    "/api/admin/users",
+    tags=["admin"],
+    response_model=AdminUsersResponse,
 )
 async def admin_users(request: Request) -> AdminUsersResponse:
     """List authorized users. Returns whether current user is authorized."""

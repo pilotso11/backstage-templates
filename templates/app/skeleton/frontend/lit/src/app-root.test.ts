@@ -3,7 +3,7 @@ import { AppRoot } from './app-root.ts'
 
 // Mock fetch
 const mockFetch = vi.fn()
-global.fetch = mockFetch as any
+vi.stubGlobal('fetch', mockFetch)
 
 beforeEach(() => {
   mockFetch.mockReset()
