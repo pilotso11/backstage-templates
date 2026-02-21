@@ -1,10 +1,182 @@
-function App() {
+import { useState, useEffect, FormEvent } from 'react'
+
+type Page = 'main' | 'admin'
+type Op = 'add' | 'sub' | 'mul' | 'div' | 'pow'
+
+interface User {
+  email: string
+  username: string
+  authenticated: boolean
+}
+
+interface ComputeResult {
+  a: number
+  op: string
+  b: number
+  result: number
+}
+
+interface AdminData {
+  authorized: boolean
+  users: string[]
+}
+
+function MainPage() {
+  const [a, setA] = useState('')
+  const [b, setB] = useState('')
+  const [op, setOp] = useState<Op>('add')
+  const [result, setResult] = useState<ComputeResult | null>(null)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    setResult(null)
+    try {
+      const resp = await fetch('/api/compute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ a: Number(a), op, b: Number(b) }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json()
+        setError(data.error || data.detail || 'Request failed')
+        return
+      }
+      setResult(await resp.json())
+    } catch {
+      setError('Network error')
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">${{ values.name }}</h1>
-        <p className="text-gray-600">${{ values.description }}</p>
+    <div>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Calculator</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={a}
+            onChange={e => setA(e.target.value)}
+            placeholder="a"
+            step="any"
+            required
+            className="w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            value={op}
+            onChange={e => setOp(e.target.value as Op)}
+            className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="add">+</option>
+            <option value="sub">-</option>
+            <option value="mul">&times;</option>
+            <option value="div">&divide;</option>
+            <option value="pow">^</option>
+          </select>
+          <input
+            type="number"
+            value={b}
+            onChange={e => setB(e.target.value)}
+            placeholder="b"
+            step="any"
+            required
+            className="w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
+            =
+          </button>
+        </div>
+      </form>
+      {result && (
+        <p className="mt-4 text-lg text-gray-700">
+          {result.a} {result.op} {result.b} = <span className="font-bold">{result.result}</span>
+        </p>
+      )}
+      {error && <p className="mt-4 text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+function AdminPage() {
+  const [data, setData] = useState<AdminData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/admin/users')
+      .then(r => r.json())
+      .then(setData)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <p className="text-gray-500">Loading...</p>
+  if (!data) return <p className="text-red-600">Failed to load admin data</p>
+
+  if (!data.authorized) {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold text-red-600 mb-2">Access Denied</h2>
+        <p className="text-gray-600">You are not authorized to view this page.</p>
       </div>
+    )
+  }
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Authorized Users</h2>
+      <ul className="list-disc list-inside space-y-1">
+        {data.users.map(u => (
+          <li key={u} className="text-gray-700">{u}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function App() {
+  const [page, setPage] = useState<Page>('main')
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    fetch('/api/user')
+      .then(r => r.json())
+      .then(setUser)
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-white shadow">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">${{ values.name }}</h1>
+          <nav className="flex items-center gap-4">
+            <button
+              onClick={() => setPage('main')}
+              className={`text-sm font-medium ${page === 'main' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Calculator
+            </button>
+            <button
+              onClick={() => setPage('admin')}
+              className={`text-sm font-medium ${page === 'admin' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Admin
+            </button>
+            {user && (
+              <span className="text-sm text-gray-500">
+                {user.authenticated ? user.email : 'Not signed in'}
+              </span>
+            )}
+          </nav>
+        </div>
+      </header>
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          {page === 'main' ? <MainPage /> : <AdminPage />}
+        </div>
+      </main>
     </div>
   )
 }

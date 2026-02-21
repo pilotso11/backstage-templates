@@ -1,6 +1,29 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import App from './App'
+
+// Mock fetch for all tests
+const mockFetch = vi.fn()
+global.fetch = mockFetch
+
+beforeEach(() => {
+  mockFetch.mockReset()
+  mockFetch.mockImplementation((url: string) => {
+    if (url === '/api/user') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+      })
+    }
+    if (url === '/api/admin/users') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ authorized: true, users: ['dev@example.com'] }),
+      })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+  })
+})
 
 describe('App component', () => {
   describe('rendering', () => {
@@ -8,28 +31,15 @@ describe('App component', () => {
       expect(() => render(<App />)).not.toThrow()
     })
 
-    it('renders exactly one h1 heading', () => {
-      const { container } = render(<App />)
-      expect(container.querySelectorAll('h1')).toHaveLength(1)
-    })
-
-    it('renders exactly one paragraph', () => {
-      const { container } = render(<App />)
-      expect(container.querySelectorAll('p')).toHaveLength(1)
-    })
-  })
-
-  describe('content', () => {
-    it('heading has non-empty text content', () => {
+    it('renders the app name as heading', () => {
       render(<App />)
-      const heading = screen.getByRole('heading', { level: 1 })
-      expect(heading.textContent?.trim().length).toBeGreaterThan(0)
+      expect(screen.getByRole('heading', { level: 1 })).toBeDefined()
     })
 
-    it('paragraph has non-empty text content', () => {
-      const { container } = render(<App />)
-      const para = container.querySelector('p')
-      expect(para?.textContent?.trim().length).toBeGreaterThan(0)
+    it('renders Calculator and Admin nav buttons', () => {
+      render(<App />)
+      expect(screen.getByText('Calculator')).toBeDefined()
+      expect(screen.getByText('Admin')).toBeDefined()
     })
   })
 
@@ -43,25 +53,30 @@ describe('App component', () => {
       const { container } = render(<App />)
       expect(container.querySelector('.bg-white')).not.toBeNull()
     })
+  })
 
-    it('card has shadow and padding', () => {
+  describe('calculator page', () => {
+    it('renders number inputs', () => {
       const { container } = render(<App />)
-      const card = container.querySelector('.bg-white')
-      expect(card?.className).toContain('shadow')
-      expect(card?.className).toContain('p-8')
+      const inputs = container.querySelectorAll('input[type="number"]')
+      expect(inputs.length).toBe(2)
+    })
+
+    it('renders operation select', () => {
+      const { container } = render(<App />)
+      expect(container.querySelector('select')).not.toBeNull()
+    })
+
+    it('renders submit button', () => {
+      const { container } = render(<App />)
+      expect(container.querySelector('button[type="submit"]')).not.toBeNull()
     })
   })
 
-  describe('accessibility', () => {
-    it('heading is findable by role', () => {
+  describe('api calls', () => {
+    it('fetches /api/user on mount', () => {
       render(<App />)
-      expect(screen.getByRole('heading')).toBeDefined()
-    })
-
-    it('has no nested headings', () => {
-      const { container } = render(<App />)
-      expect(container.querySelectorAll('h2,h3,h4,h5,h6')).toHaveLength(0)
+      expect(mockFetch).toHaveBeenCalledWith('/api/user')
     })
   })
-
 })
