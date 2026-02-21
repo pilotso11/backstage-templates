@@ -21,7 +21,8 @@ class AdminUsersResponse(BaseModel):
 def _load_authorized_users() -> list[str]:
     """Load authorized user emails from JSON file."""
     try:
-        return json.loads(_AUTHORIZED_USERS_PATH.read_text())
+        users: list[str] = json.loads(_AUTHORIZED_USERS_PATH.read_text())
+        return users
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
