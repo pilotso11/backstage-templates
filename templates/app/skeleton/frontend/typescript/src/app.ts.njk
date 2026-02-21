@@ -1,25 +1,248 @@
+interface User {
+  email: string
+  username: string
+  authenticated: boolean
+}
+
+interface ComputeResult {
+  a: number
+  op: string
+  b: number
+  result: number
+}
+
+interface AdminData {
+  authorized: boolean
+  users: string[]
+}
+
 export class App {
+  private user: User | null = null
+
   constructor(private readonly container: HTMLElement) {}
 
   render(): void {
     this.container.replaceChildren()
+    this.fetchUser()
+    this.route()
+    window.addEventListener('hashchange', () => this.route())
+  }
+
+  private async fetchUser() {
+    try {
+      const resp = await fetch('/api/user')
+      this.user = await resp.json()
+      this.updateUserDisplay()
+    } catch { /* ignore */ }
+  }
+
+  private route() {
+    const hash = window.location.hash
+    const main = this.container.querySelector('[data-page]') as HTMLElement | null
+    if (main) main.remove()
+
+    if (hash === '#/admin') {
+      this.renderAdmin()
+    } else {
+      this.renderMain()
+    }
+  }
+
+  private renderShell(): HTMLElement {
+    this.container.replaceChildren()
 
     const wrapper = document.createElement('div')
-    wrapper.className = 'min-h-screen bg-gray-100 flex items-center justify-center'
+    wrapper.className = 'min-h-screen bg-gray-100'
 
+    // Header
+    const header = document.createElement('header')
+    header.className = 'bg-white shadow'
+    const headerInner = document.createElement('div')
+    headerInner.className = 'max-w-3xl mx-auto px-4 py-4 flex items-center justify-between'
+
+    const h1 = document.createElement('h1')
+    h1.className = 'text-2xl font-bold text-gray-900'
+    h1.textContent = '${{ values.name }}'
+
+    const nav = document.createElement('nav')
+    nav.className = 'flex items-center gap-4'
+
+    const calcLink = document.createElement('a')
+    calcLink.href = '#/'
+    calcLink.className = 'text-sm font-medium text-gray-500 hover:text-gray-700'
+    calcLink.textContent = 'Calculator'
+
+    const adminLink = document.createElement('a')
+    adminLink.href = '#/admin'
+    adminLink.className = 'text-sm font-medium text-gray-500 hover:text-gray-700'
+    adminLink.textContent = 'Admin'
+
+    const userSpan = document.createElement('span')
+    userSpan.className = 'text-sm text-gray-500'
+    userSpan.dataset.userDisplay = ''
+    if (this.user) {
+      userSpan.textContent = this.user.authenticated ? this.user.email : 'Not signed in'
+    }
+
+    nav.append(calcLink, adminLink, userSpan)
+    headerInner.append(h1, nav)
+    header.appendChild(headerInner)
+
+    // Main
+    const main = document.createElement('main')
+    main.className = 'max-w-3xl mx-auto px-4 py-8'
     const card = document.createElement('div')
-    card.className = 'bg-white rounded-lg shadow p-8 max-w-md w-full'
+    card.className = 'bg-white rounded-lg shadow p-6'
+    card.dataset.page = ''
+    main.appendChild(card)
 
-    const heading = document.createElement('h1')
-    heading.className = 'text-3xl font-bold text-gray-900 mb-4'
-    heading.textContent = '${{ values.name }}'
-
-    const description = document.createElement('p')
-    description.className = 'text-gray-600'
-    description.textContent = '${{ values.description }}'
-
-    card.append(heading, description)
-    wrapper.appendChild(card)
+    wrapper.append(header, main)
     this.container.appendChild(wrapper)
+    return card
+  }
+
+  private updateUserDisplay() {
+    const span = this.container.querySelector('[data-user-display]')
+    if (span && this.user) {
+      span.textContent = this.user.authenticated ? this.user.email : 'Not signed in'
+    }
+  }
+
+  private renderMain() {
+    const card = this.renderShell()
+
+    const h2 = document.createElement('h2')
+    h2.className = 'text-xl font-semibold text-gray-800 mb-4'
+    h2.textContent = 'Calculator'
+
+    const form = document.createElement('form')
+    form.className = 'space-y-4'
+    const row = document.createElement('div')
+    row.className = 'flex items-center gap-2'
+
+    const inputA = document.createElement('input')
+    inputA.type = 'number'
+    inputA.name = 'a'
+    inputA.placeholder = 'a'
+    inputA.step = 'any'
+    inputA.required = true
+    inputA.className = 'w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+    const select = document.createElement('select')
+    select.name = 'op'
+    select.className = 'px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+    for (const [val, label] of [['add', '+'], ['sub', '-'], ['mul', '\u00d7'], ['div', '\u00f7'], ['pow', '^']]) {
+      const opt = document.createElement('option')
+      opt.value = val
+      opt.textContent = label
+      select.appendChild(opt)
+    }
+
+    const inputB = document.createElement('input')
+    inputB.type = 'number'
+    inputB.name = 'b'
+    inputB.placeholder = 'b'
+    inputB.step = 'any'
+    inputB.required = true
+    inputB.className = 'w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+    const btn = document.createElement('button')
+    btn.type = 'submit'
+    btn.className = 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition'
+    btn.textContent = '='
+
+    row.append(inputA, select, inputB, btn)
+    form.appendChild(row)
+
+    const resultP = document.createElement('p')
+    resultP.className = 'mt-4 text-lg text-gray-700 hidden'
+
+    const errorP = document.createElement('p')
+    errorP.className = 'mt-4 text-red-600 hidden'
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      resultP.classList.add('hidden')
+      resultP.textContent = ''
+      errorP.classList.add('hidden')
+      try {
+        const resp = await fetch('/api/compute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            a: Number(inputA.value),
+            op: select.value,
+            b: Number(inputB.value),
+          }),
+        })
+        if (!resp.ok) {
+          const data = await resp.json()
+          errorP.textContent = data.error || data.detail || 'Request failed'
+          errorP.classList.remove('hidden')
+          return
+        }
+        const result: ComputeResult = await resp.json()
+        // Build result display using safe DOM methods (no innerHTML)
+        resultP.textContent = ''
+        resultP.append(
+          document.createTextNode(`${result.a} ${result.op} ${result.b} = `),
+        )
+        const bold = document.createElement('span')
+        bold.className = 'font-bold'
+        bold.textContent = String(result.result)
+        resultP.appendChild(bold)
+        resultP.classList.remove('hidden')
+      } catch {
+        errorP.textContent = 'Network error'
+        errorP.classList.remove('hidden')
+      }
+    })
+
+    card.append(h2, form, resultP, errorP)
+  }
+
+  private async renderAdmin() {
+    const card = this.renderShell()
+
+    const loading = document.createElement('p')
+    loading.className = 'text-gray-500'
+    loading.textContent = 'Loading...'
+    card.appendChild(loading)
+
+    try {
+      const resp = await fetch('/api/admin/users')
+      const data: AdminData = await resp.json()
+      card.replaceChildren()
+
+      if (!data.authorized) {
+        const h2 = document.createElement('h2')
+        h2.className = 'text-xl font-semibold text-red-600 mb-2'
+        h2.textContent = 'Access Denied'
+        const p = document.createElement('p')
+        p.className = 'text-gray-600'
+        p.textContent = 'You are not authorized to view this page.'
+        card.append(h2, p)
+        return
+      }
+
+      const h2 = document.createElement('h2')
+      h2.className = 'text-xl font-semibold text-gray-800 mb-4'
+      h2.textContent = 'Authorized Users'
+      const ul = document.createElement('ul')
+      ul.className = 'list-disc list-inside space-y-1'
+      for (const u of data.users) {
+        const li = document.createElement('li')
+        li.className = 'text-gray-700'
+        li.textContent = u
+        ul.appendChild(li)
+      }
+      card.append(h2, ul)
+    } catch {
+      card.replaceChildren()
+      const err = document.createElement('p')
+      err.className = 'text-red-600'
+      err.textContent = 'Failed to load admin data'
+      card.appendChild(err)
+    }
   }
 }

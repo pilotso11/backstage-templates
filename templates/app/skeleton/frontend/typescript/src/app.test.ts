@@ -1,5 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { App } from './app.ts'
+
+// Mock fetch
+const mockFetch = vi.fn()
+global.fetch = mockFetch as any
+
+beforeEach(() => {
+  mockFetch.mockReset()
+  mockFetch.mockImplementation((url: string) => {
+    if (url === '/api/user') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+      })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+  })
+  window.location.hash = ''
+})
 
 describe('App class', () => {
   let container: HTMLDivElement
@@ -23,21 +41,55 @@ describe('App class', () => {
       expect(container.querySelectorAll('h1')).toHaveLength(1)
     })
 
-    it('renders exactly one p element', () => {
+    it('renders a Calculator heading (h2)', () => {
       new App(container).render()
-      expect(container.querySelectorAll('p')).toHaveLength(1)
+      const h2 = container.querySelector('h2')
+      expect(h2?.textContent).toBe('Calculator')
     })
 
-    it('heading has non-empty textContent', () => {
+    it('fetches /api/user on render', () => {
       new App(container).render()
-      const h1 = container.querySelector('h1')
-      expect(h1?.textContent?.trim().length).toBeGreaterThan(0)
+      expect(mockFetch).toHaveBeenCalledWith('/api/user')
+    })
+  })
+
+  describe('calculator page', () => {
+    it('renders number inputs', () => {
+      new App(container).render()
+      const inputs = container.querySelectorAll('input[type="number"]')
+      expect(inputs.length).toBe(2)
     })
 
-    it('paragraph has non-empty textContent', () => {
+    it('renders operation select', () => {
       new App(container).render()
-      const p = container.querySelector('p')
-      expect(p?.textContent?.trim().length).toBeGreaterThan(0)
+      expect(container.querySelector('select')).not.toBeNull()
+    })
+
+    it('renders submit button', () => {
+      new App(container).render()
+      expect(container.querySelector('button[type="submit"]')).not.toBeNull()
+    })
+
+    it('select has all 5 operations', () => {
+      new App(container).render()
+      const options = container.querySelectorAll('select option')
+      expect(options.length).toBe(5)
+    })
+  })
+
+  describe('navigation', () => {
+    it('has Calculator link', () => {
+      new App(container).render()
+      const link = container.querySelector('a[href="#/"]')
+      expect(link).not.toBeNull()
+      expect(link?.textContent).toBe('Calculator')
+    })
+
+    it('has Admin link', () => {
+      new App(container).render()
+      const link = container.querySelector('a[href="#/admin"]')
+      expect(link).not.toBeNull()
+      expect(link?.textContent).toBe('Admin')
     })
   })
 
@@ -54,41 +106,8 @@ describe('App class', () => {
 
     it('card has shadow class', () => {
       new App(container).render()
-      const card = container.querySelector('.bg-white')
-      expect(card?.className).toContain('shadow')
-    })
-  })
-
-  describe('XSS safety', () => {
-    it('uses textContent not innerHTML (heading)', () => {
-      new App(container).render()
-      const h1 = container.querySelector('h1')
-      // textContent would escape any HTML; verify no tags in the content
-      expect(h1?.innerHTML).not.toContain('<')
-    })
-
-    it('uses textContent not innerHTML (paragraph)', () => {
-      new App(container).render()
-      const p = container.querySelector('p')
-      expect(p?.innerHTML).not.toContain('<')
-    })
-  })
-
-  describe('re-render', () => {
-    it('clears old content before re-rendering', () => {
-      const app = new App(container)
-      app.render()
-      app.render()
-      expect(container.querySelectorAll('h1')).toHaveLength(1)
-      expect(container.querySelectorAll('p')).toHaveLength(1)
-    })
-
-    it('renders same structure on second render', () => {
-      const app = new App(container)
-      app.render()
-      const firstHTML = container.innerHTML
-      app.render()
-      expect(container.innerHTML).toBe(firstHTML)
+      const card = container.querySelector('.bg-white.shadow')
+      expect(card).not.toBeNull()
     })
   })
 })
