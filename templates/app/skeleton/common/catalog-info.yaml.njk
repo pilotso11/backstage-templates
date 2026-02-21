@@ -24,13 +24,11 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:default/${{ values.backstageUser }}
-{% if values.backend !== "none" %}
-  providesApis:
+{% if values.backend !== "none" %}  providesApis:
     - ${{ values.name }}-api
-{% endif %}
+{% endif %}{% if values.backend !== "none" %}
 
 ---
-{% if values.backend !== "none" %}
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
