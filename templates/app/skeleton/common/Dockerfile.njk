@@ -25,6 +25,7 @@ FROM alpine:latest
 RUN apk add --no-cache curl tzdata ca-certificates
 WORKDIR /app
 COPY --from=backend-builder /app/server .
+COPY --from=backend-builder /app/authorized_users.json .
 {% if values.frontend !== "none" %}
 COPY --from=frontend-builder /app/frontend/dist ./dist
 ENV STATIC_FILES_DIR=./dist
