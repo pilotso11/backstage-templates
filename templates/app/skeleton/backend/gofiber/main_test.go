@@ -155,7 +155,9 @@ func TestCompute_Add(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	var result ComputeResponse
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if result.Result != 5 {
 		t.Errorf("expected 5, got %f", result.Result)
 	}
@@ -167,7 +169,9 @@ func TestCompute_Sub(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	var result ComputeResponse
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if result.Result != 7 {
 		t.Errorf("expected 7, got %f", result.Result)
 	}
@@ -179,7 +183,9 @@ func TestCompute_Mul(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	var result ComputeResponse
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if result.Result != 20 {
 		t.Errorf("expected 20, got %f", result.Result)
 	}
@@ -191,7 +197,9 @@ func TestCompute_Div(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	var result ComputeResponse
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if result.Result != 2.5 {
 		t.Errorf("expected 2.5, got %f", result.Result)
 	}
@@ -203,7 +211,9 @@ func TestCompute_Pow(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	var result ComputeResponse
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if result.Result != 1024 {
 		t.Errorf("expected 1024, got %f", result.Result)
 	}
@@ -222,7 +232,9 @@ func TestCompute_InvalidOp(t *testing.T) {
 		t.Errorf("expected 400, got %d", resp.StatusCode)
 	}
 	var m map[string]string
-	json.Unmarshal(body, &m)
+	if err := json.Unmarshal(body, &m); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if m["error"] != "invalid operation" {
 		t.Errorf("expected 'invalid operation' error, got %q", m["error"])
 	}
@@ -251,7 +263,9 @@ func TestCompute_GetMethodNotAllowed(t *testing.T) {
 func TestCompute_ResponseIncludesInputs(t *testing.T) {
 	_, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 7, Op: "add", B: 3})
 	var result ComputeResponse
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if result.A != 7 || result.B != 3 || result.Op != "add" {
 		t.Errorf("response should echo inputs: got a=%f op=%s b=%f", result.A, result.Op, result.B)
 	}
@@ -274,15 +288,19 @@ func TestAdminUsers_DevUser_IsAuthorized(t *testing.T) {
 
 	// Write a temp authorized_users.json
 	tmpFile := "authorized_users.json"
-	os.WriteFile(tmpFile, []byte(`["dev@example.com"]`), 0644)
-	defer os.Remove(tmpFile)
+	if err := os.WriteFile(tmpFile, []byte(`["dev@example.com"]`), 0644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	t.Setenv("DEV_MODE", "true")
 	t.Setenv("DEV_USER_EMAIL", "dev@example.com")
 
 	_, body := doRequest(t, testApp(), "GET", "/api/admin/users")
 	var resp AdminUsersResponse
-	json.Unmarshal(body, &resp)
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if !resp.Authorized {
 		t.Error("expected authorized=true for dev@example.com")
 	}
@@ -293,15 +311,19 @@ func TestAdminUsers_UnknownUser_NotAuthorized(t *testing.T) {
 	authorizedUsers = nil
 
 	tmpFile := "authorized_users.json"
-	os.WriteFile(tmpFile, []byte(`["dev@example.com"]`), 0644)
-	defer os.Remove(tmpFile)
+	if err := os.WriteFile(tmpFile, []byte(`["dev@example.com"]`), 0644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	t.Setenv("DEV_MODE", "true")
 	t.Setenv("DEV_USER_EMAIL", "stranger@example.com")
 
 	_, body := doRequest(t, testApp(), "GET", "/api/admin/users")
 	var resp AdminUsersResponse
-	json.Unmarshal(body, &resp)
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if resp.Authorized {
 		t.Error("expected authorized=false for stranger@example.com")
 	}
@@ -312,14 +334,18 @@ func TestAdminUsers_ReturnsUserList(t *testing.T) {
 	authorizedUsers = nil
 
 	tmpFile := "authorized_users.json"
-	os.WriteFile(tmpFile, []byte(`["dev@example.com","admin@example.com"]`), 0644)
-	defer os.Remove(tmpFile)
+	if err := os.WriteFile(tmpFile, []byte(`["dev@example.com","admin@example.com"]`), 0644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile) }()
 
 	t.Setenv("DEV_MODE", "true")
 
 	_, body := doRequest(t, testApp(), "GET", "/api/admin/users")
 	var resp AdminUsersResponse
-	json.Unmarshal(body, &resp)
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
 	if len(resp.Users) != 2 {
 		t.Errorf("expected 2 users, got %d", len(resp.Users))
 	}
