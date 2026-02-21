@@ -6,7 +6,6 @@ metadata:
   annotations:
     github.com/project-slug: ${{ values.owner }}/${{ values.name }}
     backstage.io/kubernetes-id: ${{ values.name }}
-    backstage.io/techdocs-ref: url:https://github.com/${{ values.owner }}/${{ values.name }}
   links:
     - url: https://${{ values.name }}.staging.oshers.com
       title: Live Site
@@ -26,4 +25,28 @@ spec:
   owner: user:default/${{ values.backstageUser }}
 {% if values.backend !== "none" %}  providesApis:
     - ${{ values.name }}-api
+{% endif %}
+---
+{% if values.backend !== "none" %}apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${{ values.name }}-api
+  description: OpenAPI specification for ${{ values.name }}
+  annotations:
+    github.com/project-slug: ${{ values.owner }}/${{ values.name }}
+    backstage.io/kubernetes-id: ${{ values.name }}
+  tags:
+    - api
+    - openapi
+{% if values.backend == "fastapi" %}    - python
+    - fastapi
+{% elif values.backend == "gofiber" %}    - go
+    - fiber
+{% endif %}
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: user:default/${{ values.backstageUser }}
+  definition:
+    $text: ./backend/openapi.yaml
 {% endif %}
