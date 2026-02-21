@@ -2,7 +2,7 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: app-scaffolder
-  title: Full-Stack Application v0.0.35
+  title: Full-Stack Application v0.0.36
   description: >
     Composable full-stack app with optional frontend (React/Lit/TypeScript + Vite + Tailwind + Bun)
     and backend (GoFiber + OpenAPI or FastAPI + OpenAPI). Multi-arch Docker, coverage badges,
@@ -22,7 +22,7 @@ spec:
 
   parameters:
     - title: Application Details
-      required: [name, description, owner]
+      required: [name, description]
       properties:
         name:
           title: Name
@@ -34,14 +34,6 @@ spec:
           title: Description
           type: string
           description: Short description of the application
-        owner:
-          title: GitHub Owner
-          type: string
-          description: >
-            GitHub username or organization that will own the repo.
-            IMPORTANT: Your GitHub token must have write permissions for this owner/org.
-            For personal projects, use your GitHub username (e.g., "pilotso11").
-            For company projects, ensure you have been granted repo creation permissions in the organization.
 
     - title: Stack Selection
       properties:
@@ -65,23 +57,16 @@ spec:
             - "Go + GoFiber (OpenAPI via swaggo)"
             - "Python + FastAPI (OpenAPI built-in)"
 
-    - title: Docker Hub
+    - title: Deployment
       properties:
-        dockerhub_org:
-          title: Docker Hub Org / Username
-          type: string
-          description: Docker Hub organization or username for image pushes
         containerPort:
           title: Container Port
           type: number
           description: "Application container port (default: 8000)"
-
-    - title: Authentication
-      properties:
         enableSSO:
           title: Enable SSO
           type: boolean
-          default: false
+          default: true
           description: >
             Enable Google OAuth2 Single Sign-On via oauth2-proxy.
             In development, simulated auth headers are used via DEV_USER_EMAIL env var.
@@ -96,11 +81,11 @@ spec:
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
-          owner: ${{ parameters.owner }}
+          owner: pilotso11
           backstageUser: ${{ user.entity.metadata.name }}
           frontend: ${{ parameters.frontend }}
           backend: ${{ parameters.backend }}
-          dockerhub_org: ${{ parameters.dockerhub_org }}
+          dockerhub_org: pilotso11
           enableSSO: ${{ parameters.enableSSO if parameters.enableSSO else false }}
 
     - id: fetch-frontend-react
@@ -153,7 +138,7 @@ spec:
         values:
           name: ${{ parameters.name }}
           description: ${{ parameters.description }}
-          owner: ${{ parameters.owner }}
+          owner: pilotso11
           enableSSO: ${{ parameters.enableSSO if parameters.enableSSO else false }}
 
     - id: fetch-backend-fastapi
@@ -178,7 +163,7 @@ spec:
       name: Create GitHub repository
       action: publish:github
       input:
-        repoUrl: "github.com?owner=${{ parameters.owner }}&repo=${{ parameters.name }}"
+        repoUrl: "github.com?owner=pilotso11&repo=${{ parameters.name }}"
         description: ${{ parameters.description }}
         repoVisibility: private
         defaultBranch: main
@@ -189,15 +174,15 @@ spec:
       name: Register in Backstage catalog
       action: catalog:register
       input:
-        catalogInfoUrl: https://github.com/${{ parameters.owner }}/${{ parameters.name }}/blob/main/catalog-info.yaml
+        catalogInfoUrl: https://github.com/pilotso11/${{ parameters.name }}/blob/main/catalog-info.yaml
 
     - id: register-with-flux
       name: Register with cluster (open PR)
       action: oshers:register-with-flux
       input:
         appName: ${{ parameters.name }}
-        repoOwner: ${{ parameters.owner }}
-        dockerhubOrg: ${{ parameters.dockerhub_org }}
+        repoOwner: pilotso11
+        dockerhubOrg: pilotso11
         containerPort: ${{ parameters.containerPort if parameters.containerPort else 8000 }}
         enableSSO: ${{ parameters.enableSSO if parameters.enableSSO else false }}
         githubToken: ${{ secrets.GITHUB_TOKEN }}
