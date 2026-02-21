@@ -19,6 +19,7 @@ class AuthUser:
     email: str
     user: str
     username: str
+    authenticated: bool
 
 
 def get_auth_user(request: Request) -> AuthUser:
@@ -28,6 +29,7 @@ def get_auth_user(request: Request) -> AuthUser:
             email=_DEV_USER_EMAIL,
             user=_DEV_USER_EMAIL,
             username="Dev User",
+            authenticated=True,
         )
 
     email = request.headers.get("X-Auth-Request-Email") or request.headers.get(
@@ -35,4 +37,9 @@ def get_auth_user(request: Request) -> AuthUser:
     )
     username = request.headers.get("X-Auth-Request-Preferred-Username", email)
 
-    return AuthUser(email=email, user=email, username=username)
+    return AuthUser(
+        email=email,
+        user=email,
+        username=username,
+        authenticated=bool(email),
+    )

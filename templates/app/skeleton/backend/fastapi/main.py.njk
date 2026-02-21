@@ -3,13 +3,18 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
+from admin import router as admin_router
 from auth import AuthUser, get_auth_user
+from compute import router as compute_router
 
 app = FastAPI(
     title="${{ values.name }} API",
     description="${{ values.description }}",
     version="1.0.0",
 )
+
+app.include_router(compute_router)
+app.include_router(admin_router)
 
 
 @app.get("/healthz", tags=["ops"])
@@ -18,15 +23,9 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/hello", tags=["example"])
-async def hello() -> dict[str, str]:
-    """Returns a hello message."""
-    return {"message": "Hello from ${{ values.name }}!"}
-
-
-@app.get("/api/whoami", tags=["auth"])
-async def whoami(request: Request) -> AuthUser:
-    """Get current authenticated user."""
+@app.get("/api/user", tags=["auth"])
+async def user(request: Request) -> AuthUser:
+    """Get current user identity."""
     return get_auth_user(request)
 
 

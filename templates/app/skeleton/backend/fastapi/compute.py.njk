@@ -1,0 +1,45 @@
+"""Compute endpoint — simple calculator API."""
+
+import math
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+router = APIRouter()
+
+VALID_OPS = {"add", "sub", "mul", "div", "pow"}
+
+
+class ComputeRequest(BaseModel):
+    a: float
+    op: str
+    b: float
+
+
+class ComputeResponse(BaseModel):
+    a: float
+    op: str
+    b: float
+    result: float
+
+
+@router.post("/api/compute", tags=["compute"], response_model=ComputeResponse)
+async def compute(req: ComputeRequest) -> ComputeResponse:
+    """Compute a math operation: add, sub, mul, div, pow."""
+    if req.op not in VALID_OPS:
+        raise HTTPException(status_code=400, detail="invalid operation")
+
+    if req.op == "add":
+        result = req.a + req.b
+    elif req.op == "sub":
+        result = req.a - req.b
+    elif req.op == "mul":
+        result = req.a * req.b
+    elif req.op == "div":
+        if req.b == 0:
+            raise HTTPException(status_code=400, detail="division by zero")
+        result = req.a / req.b
+    elif req.op == "pow":
+        result = math.pow(req.a, req.b)
+
+    return ComputeResponse(a=req.a, op=req.op, b=req.b, result=result)

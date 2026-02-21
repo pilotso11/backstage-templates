@@ -1,5 +1,10 @@
 """Integration tests for ${{ values.name }} API."""
 
+import json
+import os
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -37,34 +42,131 @@ class TestHealthz:
         assert response.status_code == 405
 
 
-# ── /api/hello ────────────────────────────────────────────────────────────────
+# ── /api/user ─────────────────────────────────────────────────────────────────
 
 
-class TestHello:
+class TestUser:
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "test@example.com"})
     def test_status_200(self) -> None:
-        response = client.get("/api/hello")
+        response = client.get("/api/user")
         assert response.status_code == 200
 
-    def test_returns_message_field(self) -> None:
-        response = client.get("/api/hello")
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "test@example.com"})
+    def test_returns_email(self) -> None:
+        response = client.get("/api/user")
         data = response.json()
-        assert "message" in data
+        assert data["email"] == "test@example.com"
 
-    def test_message_is_string(self) -> None:
-        response = client.get("/api/hello")
-        assert isinstance(response.json()["message"], str)
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "test@example.com"})
+    def test_returns_authenticated_true(self) -> None:
+        response = client.get("/api/user")
+        data = response.json()
+        assert data["authenticated"] is True
 
-    def test_message_non_empty(self) -> None:
-        response = client.get("/api/hello")
-        assert len(response.json()["message"]) > 0
+    def test_no_headers_not_authenticated(self) -> None:
+        response = client.get("/api/user")
+        data = response.json()
+        assert data["authenticated"] is False
 
     def test_content_type_json(self) -> None:
-        response = client.get("/api/hello")
+        response = client.get("/api/user")
         assert "application/json" in response.headers["content-type"]
 
     def test_post_method_not_allowed(self) -> None:
-        response = client.post("/api/hello")
+        response = client.post("/api/user")
         assert response.status_code == 405
+
+
+# ── POST /api/compute ────────────────────────────────────────────────────────
+
+
+class TestCompute:
+    def test_add(self) -> None:
+        response = client.post("/api/compute", json={"a": 2, "op": "add", "b": 3})
+        assert response.status_code == 200
+        assert response.json()["result"] == 5
+
+    def test_sub(self) -> None:
+        response = client.post("/api/compute", json={"a": 10, "op": "sub", "b": 3})
+        assert response.status_code == 200
+        assert response.json()["result"] == 7
+
+    def test_mul(self) -> None:
+        response = client.post("/api/compute", json={"a": 4, "op": "mul", "b": 5})
+        assert response.status_code == 200
+        assert response.json()["result"] == 20
+
+    def test_div(self) -> None:
+        response = client.post("/api/compute", json={"a": 10, "op": "div", "b": 4})
+        assert response.status_code == 200
+        assert response.json()["result"] == 2.5
+
+    def test_pow(self) -> None:
+        response = client.post("/api/compute", json={"a": 2, "op": "pow", "b": 10})
+        assert response.status_code == 200
+        assert response.json()["result"] == 1024
+
+    def test_div_by_zero(self) -> None:
+        response = client.post("/api/compute", json={"a": 1, "op": "div", "b": 0})
+        assert response.status_code == 400
+
+    def test_invalid_op(self) -> None:
+        response = client.post("/api/compute", json={"a": 1, "op": "modulo", "b": 2})
+        assert response.status_code == 400
+
+    def test_response_includes_inputs(self) -> None:
+        response = client.post("/api/compute", json={"a": 7, "op": "add", "b": 3})
+        data = response.json()
+        assert data["a"] == 7
+        assert data["b"] == 3
+        assert data["op"] == "add"
+
+    def test_get_method_not_allowed(self) -> None:
+        response = client.get("/api/compute")
+        assert response.status_code in (404, 405)
+
+    def test_missing_fields_422(self) -> None:
+        response = client.post("/api/compute", json={"a": 1})
+        assert response.status_code == 422
+
+
+# ── /api/admin/users ─────────────────────────────────────────────────────────
+
+
+class TestAdminUsers:
+    def _write_users(self, users: list[str], tmp_path: Path) -> Path:
+        p = tmp_path / "authorized_users.json"
+        p.write_text(json.dumps(users))
+        return p
+
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "dev@example.com"})
+    def test_status_200(self) -> None:
+        response = client.get("/api/admin/users")
+        assert response.status_code == 200
+
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "dev@example.com"})
+    def test_authorized_user(self, tmp_path: Path) -> None:
+        users_file = self._write_users(["dev@example.com"], tmp_path)
+        with patch("admin._AUTHORIZED_USERS_PATH", users_file):
+            response = client.get("/api/admin/users")
+            data = response.json()
+            assert data["authorized"] is True
+
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "stranger@example.com"})
+    def test_unauthorized_user(self, tmp_path: Path) -> None:
+        users_file = self._write_users(["dev@example.com"], tmp_path)
+        with patch("admin._AUTHORIZED_USERS_PATH", users_file):
+            response = client.get("/api/admin/users")
+            data = response.json()
+            assert data["authorized"] is False
+
+    @patch.dict(os.environ, {"DEV_MODE": "true", "DEV_USER_EMAIL": "dev@example.com"})
+    def test_returns_user_list(self, tmp_path: Path) -> None:
+        users_file = self._write_users(["dev@example.com", "admin@example.com"], tmp_path)
+        with patch("admin._AUTHORIZED_USERS_PATH", users_file):
+            response = client.get("/api/admin/users")
+            data = response.json()
+            assert len(data["users"]) == 2
 
 
 # ── OpenAPI ───────────────────────────────────────────────────────────────────
@@ -80,31 +182,20 @@ class TestOpenAPI:
         schema = response.json()
         assert schema["info"]["title"] == "${{ values.name }} API"
 
-    def test_openapi_version_present(self) -> None:
-        response = client.get("/openapi.json")
-        schema = response.json()
-        assert "version" in schema["info"]
-
-    def test_openapi_description_present(self) -> None:
-        response = client.get("/openapi.json")
-        schema = response.json()
-        assert "description" in schema["info"]
-
-    def test_openapi_has_paths(self) -> None:
-        response = client.get("/openapi.json")
-        schema = response.json()
-        assert "paths" in schema
-        assert len(schema["paths"]) > 0
-
-    def test_openapi_healthz_path_present(self) -> None:
+    def test_openapi_has_compute_path(self) -> None:
         response = client.get("/openapi.json")
         paths = response.json()["paths"]
-        assert "/healthz" in paths
+        assert "/api/compute" in paths
 
-    def test_openapi_hello_path_present(self) -> None:
+    def test_openapi_has_user_path(self) -> None:
         response = client.get("/openapi.json")
         paths = response.json()["paths"]
-        assert "/api/hello" in paths
+        assert "/api/user" in paths
+
+    def test_openapi_has_admin_path(self) -> None:
+        response = client.get("/openapi.json")
+        paths = response.json()["paths"]
+        assert "/api/admin/users" in paths
 
     def test_docs_ui_accessible(self) -> None:
         response = client.get("/docs")

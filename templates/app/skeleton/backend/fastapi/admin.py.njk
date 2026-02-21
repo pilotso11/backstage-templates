@@ -1,0 +1,39 @@
+"""Admin endpoint — permission-checked user list."""
+
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, Request
+from pydantic import BaseModel
+
+from auth import get_auth_user
+
+router = APIRouter()
+
+_AUTHORIZED_USERS_PATH = Path(__file__).parent / "authorized_users.json"
+
+
+class AdminUsersResponse(BaseModel):
+    authorized: bool
+    users: list[str]
+
+
+def _load_authorized_users() -> list[str]:
+    """Load authorized user emails from JSON file."""
+    try:
+        return json.loads(_AUTHORIZED_USERS_PATH.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+@router.get(
+    "/api/admin/users", tags=["admin"], response_model=AdminUsersResponse
+)
+async def admin_users(request: Request) -> AdminUsersResponse:
+    """List authorized users. Returns whether current user is authorized."""
+    user = get_auth_user(request)
+    users = _load_authorized_users()
+    return AdminUsersResponse(
+        authorized=user.email in users,
+        users=users,
+    )
