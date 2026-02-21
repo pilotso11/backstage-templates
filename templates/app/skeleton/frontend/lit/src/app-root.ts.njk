@@ -1,5 +1,23 @@
 import { LitElement, html, css } from 'lit'
-import { customElement } from 'lit/decorators.js'
+import { customElement, state } from 'lit/decorators.js'
+
+interface User {
+  email: string
+  username: string
+  authenticated: boolean
+}
+
+interface ComputeResult {
+  a: number
+  op: string
+  b: number
+  result: number
+}
+
+interface AdminData {
+  authorized: boolean
+  users: string[]
+}
 
 @customElement('app-root')
 export class AppRoot extends LitElement {
@@ -9,14 +27,153 @@ export class AppRoot extends LitElement {
     }
   `
 
+  @state() private page: 'main' | 'admin' = 'main'
+  @state() private user: User | null = null
+  @state() private result: ComputeResult | null = null
+  @state() private computeError = ''
+  @state() private adminData: AdminData | null = null
+  @state() private adminLoading = false
+
+  connectedCallback() {
+    super.connectedCallback()
+    fetch('/api/user')
+      .then(r => r.json())
+      .then(u => { this.user = u })
+  }
+
+  private async handleCompute(e: Event) {
+    e.preventDefault()
+    this.computeError = ''
+    this.result = null
+    const form = e.target as HTMLFormElement
+    const formData = new FormData(form)
+    try {
+      const resp = await fetch('/api/compute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          a: Number(formData.get('a')),
+          op: formData.get('op'),
+          b: Number(formData.get('b')),
+        }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json()
+        this.computeError = data.error || data.detail || 'Request failed'
+        return
+      }
+      this.result = await resp.json()
+    } catch {
+      this.computeError = 'Network error'
+    }
+  }
+
+  private async showAdmin() {
+    this.page = 'admin'
+    this.adminLoading = true
+    try {
+      const resp = await fetch('/api/admin/users')
+      this.adminData = await resp.json()
+    } finally {
+      this.adminLoading = false
+    }
+  }
+
   render() {
     return html`
-      <div class="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div class="bg-white rounded-lg shadow p-8 max-w-md w-full">
-          <h1 class="text-3xl font-bold text-gray-900 mb-4">${{ values.name }}</h1>
-          <p class="text-gray-600">${{ values.description }}</p>
-        </div>
+      <div class="min-h-screen bg-gray-100">
+        <header class="bg-white shadow">
+          <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">${{ values.name }}</h1>
+            <nav class="flex items-center gap-4">
+              <button
+                @click=${() => { this.page = 'main' }}
+                class="text-sm font-medium ${this.page === 'main' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+              >Calculator</button>
+              <button
+                @click=${() => this.showAdmin()}
+                class="text-sm font-medium ${this.page === 'admin' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+              >Admin</button>
+              ${this.user ? html`
+                <span class="text-sm text-gray-500">
+                  ${this.user.authenticated ? this.user.email : 'Not signed in'}
+                </span>
+              ` : ''}
+            </nav>
+          </div>
+        </header>
+        <main class="max-w-3xl mx-auto px-4 py-8">
+          <div class="bg-white rounded-lg shadow p-6">
+            ${this.page === 'main' ? this.renderMain() : this.renderAdmin()}
+          </div>
+        </main>
       </div>
+    `
+  }
+
+  private renderMain() {
+    return html`
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Calculator</h2>
+      <form @submit=${this.handleCompute} class="space-y-4">
+        <div class="flex items-center gap-2">
+          <input
+            type="number"
+            name="a"
+            placeholder="a"
+            step="any"
+            required
+            class="w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            name="op"
+            class="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="add">+</option>
+            <option value="sub">-</option>
+            <option value="mul">&times;</option>
+            <option value="div">&divide;</option>
+            <option value="pow">^</option>
+          </select>
+          <input
+            type="number"
+            name="b"
+            placeholder="b"
+            step="any"
+            required
+            class="w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >=</button>
+        </div>
+      </form>
+      ${this.result ? html`
+        <p class="mt-4 text-lg text-gray-700">
+          ${this.result.a} ${this.result.op} ${this.result.b} =
+          <span class="font-bold">${this.result.result}</span>
+        </p>
+      ` : ''}
+      ${this.computeError ? html`<p class="mt-4 text-red-600">${this.computeError}</p>` : ''}
+    `
+  }
+
+  private renderAdmin() {
+    if (this.adminLoading) return html`<p class="text-gray-500">Loading...</p>`
+    if (!this.adminData) return html`<p class="text-red-600">Failed to load admin data</p>`
+
+    if (!this.adminData.authorized) {
+      return html`
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Access Denied</h2>
+        <p class="text-gray-600">You are not authorized to view this page.</p>
+      `
+    }
+
+    return html`
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Authorized Users</h2>
+      <ul class="list-disc list-inside space-y-1">
+        ${this.adminData.users.map(u => html`<li class="text-gray-700">${u}</li>`)}
+      </ul>
     `
   }
 }

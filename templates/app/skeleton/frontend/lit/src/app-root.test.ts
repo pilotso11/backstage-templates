@@ -1,5 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { AppRoot } from './app-root.ts'
+
+// Mock fetch
+const mockFetch = vi.fn()
+global.fetch = mockFetch as any
+
+beforeEach(() => {
+  mockFetch.mockReset()
+  mockFetch.mockImplementation((url: string) => {
+    if (url === '/api/user') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+      })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+  })
+})
 
 describe('AppRoot custom element', () => {
   describe('registration', () => {
@@ -45,6 +62,10 @@ describe('AppRoot custom element', () => {
       const result = await el.updateComplete
       expect(result).toBe(true)
     })
+
+    it('fetches /api/user on connect', () => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/user')
+    })
   })
 
   describe('styles', () => {
@@ -53,7 +74,7 @@ describe('AppRoot custom element', () => {
     })
   })
 
-  describe('querying', () => {
+  describe('shadow DOM content', () => {
     let el: AppRoot
 
     beforeEach(async () => {
@@ -66,8 +87,29 @@ describe('AppRoot custom element', () => {
       if (el.parentNode) el.parentNode.removeChild(el)
     })
 
-    it('can be selected by tag name', () => {
-      expect(document.querySelector('app-root')).not.toBeNull()
+    it('renders an h1 heading', () => {
+      expect(el.shadowRoot?.querySelector('h1')).not.toBeNull()
+    })
+
+    it('renders Calculator nav button', () => {
+      const buttons = el.shadowRoot?.querySelectorAll('button')
+      const texts = Array.from(buttons || []).map(b => b.textContent?.trim())
+      expect(texts).toContain('Calculator')
+    })
+
+    it('renders Admin nav button', () => {
+      const buttons = el.shadowRoot?.querySelectorAll('button')
+      const texts = Array.from(buttons || []).map(b => b.textContent?.trim())
+      expect(texts).toContain('Admin')
+    })
+
+    it('renders number inputs for calculator', () => {
+      const inputs = el.shadowRoot?.querySelectorAll('input[type="number"]')
+      expect(inputs?.length).toBe(2)
+    })
+
+    it('renders operation select', () => {
+      expect(el.shadowRoot?.querySelector('select')).not.toBeNull()
     })
   })
 })
