@@ -4,7 +4,7 @@ import App from './App'
 
 // Mock fetch for all tests
 const mockFetch = vi.fn()
-global.fetch = mockFetch
+vi.stubGlobal('fetch', mockFetch)
 
 beforeEach(() => {
   mockFetch.mockReset()
