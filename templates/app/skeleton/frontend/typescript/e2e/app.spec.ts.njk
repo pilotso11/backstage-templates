@@ -22,9 +22,8 @@ test.describe('${{ values.name }}', () => {
     expect(errors).toHaveLength(0)
   })
 
-  test('description paragraph is visible', async ({ page }) => {
+  test('calculator form is visible', async ({ page }) => {
     await page.goto('/')
-    const para = page.locator('p').first()
-    await expect(para).toBeVisible()
+    await expect(page.locator('form')).toBeVisible()
   })
 })

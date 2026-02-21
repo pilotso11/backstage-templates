@@ -3,7 +3,7 @@ import { App } from './app.ts'
 
 // Mock fetch
 const mockFetch = vi.fn()
-global.fetch = mockFetch as any
+vi.stubGlobal('fetch', mockFetch)
 
 beforeEach(() => {
   mockFetch.mockReset()
@@ -108,6 +108,165 @@ describe('App class', () => {
       new App(container).render()
       const card = container.querySelector('.bg-white.shadow')
       expect(card).not.toBeNull()
+    })
+  })
+
+  describe('compute form submission', () => {
+    it('displays result after successful compute', async () => {
+      mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+        if (url === '/api/compute' && opts?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ a: 2, op: 'add', b: 3, result: 5 }),
+          })
+        }
+        if (url === '/api/user') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      new App(container).render()
+      const inputA = container.querySelector('input[name="a"]') as HTMLInputElement
+      const inputB = container.querySelector('input[name="b"]') as HTMLInputElement
+      inputA.value = '2'
+      inputB.value = '3'
+
+      const form = container.querySelector('form') as HTMLFormElement
+      form.dispatchEvent(new Event('submit', { cancelable: true }))
+      await new Promise(r => setTimeout(r, 50))
+
+      const card = container.querySelector('[data-page]') as HTMLElement
+      const paragraphs = card.querySelectorAll('p')
+      expect(paragraphs[0].textContent).toContain('5')
+      expect(paragraphs[0].classList.contains('hidden')).toBe(false)
+    })
+
+    it('displays error on failed compute', async () => {
+      mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+        if (url === '/api/compute' && opts?.method === 'POST') {
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({ error: 'Division by zero' }),
+          })
+        }
+        if (url === '/api/user') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      new App(container).render()
+      const form = container.querySelector('form') as HTMLFormElement
+      form.dispatchEvent(new Event('submit', { cancelable: true }))
+      await new Promise(r => setTimeout(r, 50))
+
+      const card = container.querySelector('[data-page]') as HTMLElement
+      const paragraphs = card.querySelectorAll('p')
+      expect(paragraphs[1].textContent).toContain('Division by zero')
+      expect(paragraphs[1].classList.contains('hidden')).toBe(false)
+    })
+
+    it('displays network error on fetch failure', async () => {
+      mockFetch.mockImplementation((url: string, opts?: RequestInit) => {
+        if (url === '/api/compute' && opts?.method === 'POST') {
+          return Promise.reject(new Error('fetch failed'))
+        }
+        if (url === '/api/user') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      new App(container).render()
+      const form = container.querySelector('form') as HTMLFormElement
+      form.dispatchEvent(new Event('submit', { cancelable: true }))
+      await new Promise(r => setTimeout(r, 50))
+
+      const card = container.querySelector('[data-page]') as HTMLElement
+      const paragraphs = card.querySelectorAll('p')
+      expect(paragraphs[1].textContent).toContain('Network error')
+    })
+  })
+
+  describe('admin page', () => {
+    it('shows authorized users when authorized', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/admin/users') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ authorized: true, users: ['alice@test.com', 'bob@test.com'] }),
+          })
+        }
+        if (url === '/api/user') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      window.location.hash = '#/admin'
+      new App(container).render()
+      await new Promise(r => setTimeout(r, 50))
+
+      expect(container.textContent).toContain('alice@test.com')
+      expect(container.textContent).toContain('bob@test.com')
+    })
+
+    it('shows access denied when not authorized', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/admin/users') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ authorized: false, users: [] }),
+          })
+        }
+        if (url === '/api/user') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      window.location.hash = '#/admin'
+      new App(container).render()
+      await new Promise(r => setTimeout(r, 50))
+
+      expect(container.textContent).toContain('Access Denied')
+    })
+
+    it('shows error on fetch failure', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/admin/users') {
+          return Promise.reject(new Error('network error'))
+        }
+        if (url === '/api/user') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ email: 'test@example.com', username: 'Test', authenticated: true }),
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      window.location.hash = '#/admin'
+      new App(container).render()
+      await new Promise(r => setTimeout(r, 50))
+
+      expect(container.textContent).toContain('Failed to load admin data')
     })
   })
 })

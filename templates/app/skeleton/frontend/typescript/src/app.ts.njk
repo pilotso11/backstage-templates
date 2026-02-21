@@ -18,6 +18,7 @@ interface AdminData {
 
 export class App {
   private user: User | null = null
+  private currentHash: string | null = null
 
   constructor(private readonly container: HTMLElement) {}
 
@@ -38,6 +39,12 @@ export class App {
 
   private route() {
     const hash = window.location.hash
+    // Skip re-render if we're already showing this page
+    if (this.currentHash === hash) {
+      return
+    }
+    this.currentHash = hash
+
     const main = this.container.querySelector('[data-page]') as HTMLElement | null
     if (main) main.remove()
 
