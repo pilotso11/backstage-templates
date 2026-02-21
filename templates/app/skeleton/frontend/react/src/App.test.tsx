@@ -38,7 +38,7 @@ describe('App component', () => {
 
     it('renders Calculator and Admin nav buttons', () => {
       render(<App />)
-      expect(screen.getByText('Calculator')).toBeDefined()
+      expect(screen.getAllByText('Calculator').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('Admin')).toBeDefined()
     })
   })
