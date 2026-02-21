@@ -10,10 +10,6 @@ from dataclasses import dataclass
 
 from fastapi import Request
 
-_DEV_MODE = os.getenv("DEV_MODE", "").lower() == "true"
-_DEV_USER_EMAIL = os.getenv("DEV_USER_EMAIL", "dev@example.com")
-
-
 @dataclass
 class AuthUser:
     email: str
@@ -24,10 +20,11 @@ class AuthUser:
 
 def get_auth_user(request: Request) -> AuthUser:
     """Get the authenticated user from OAuth2 headers or dev fallback."""
-    if _DEV_MODE:
+    if os.getenv("DEV_MODE", "").lower() == "true":
+        dev_email = os.getenv("DEV_USER_EMAIL", "dev@example.com")
         return AuthUser(
-            email=_DEV_USER_EMAIL,
-            user=_DEV_USER_EMAIL,
+            email=dev_email,
+            user=dev_email,
             username="Dev User",
             authenticated=True,
         )
