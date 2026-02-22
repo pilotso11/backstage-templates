@@ -14,6 +14,12 @@ function mockFetchResponses(overrides: Record<string, unknown> = {}) {
         json: () => Promise.resolve(overrides.user ?? { email: 'test@example.com', username: 'Test', authenticated: true }),
       })
     }
+    if (url === '/api/features') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(overrides.features ?? { database: true }),
+      })
+    }
     if (url === '/api/admin/users') {
       return Promise.resolve({
         ok: true,
@@ -35,6 +41,27 @@ function mockFetchResponses(overrides: Record<string, unknown> = {}) {
         ok: true,
         json: () => Promise.resolve({ a: body.a, op: body.op, b: body.b, result: body.a + body.b }),
       })
+    }
+    if (url === '/api/todos' && (!opts || !opts.method || opts.method === 'GET')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(overrides.todos ?? [
+          { id: 1, title: 'Buy milk', description: 'From store', status: 'open', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+          { id: 2, title: 'Walk dog', description: '', status: 'done', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+        ]),
+      })
+    }
+    if (url === '/api/todos' && opts?.method === 'POST') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: 3, title: 'New', description: '', status: 'open', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' }),
+      })
+    }
+    if (url?.toString().match(/\/api\/todos\/\d+/) && opts?.method === 'PATCH') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    }
+    if (url?.toString().match(/\/api\/todos\/\d+/) && opts?.method === 'DELETE') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
   })
@@ -219,10 +246,116 @@ describe('App component', () => {
     })
   })
 
+  describe('features', () => {
+    it('shows Todos nav when database is enabled', async () => {
+      await renderApp()
+      await waitFor(() => {
+        expect(screen.getByText('Todos')).toBeDefined()
+      })
+    })
+
+    it('hides Todos nav when database is disabled', async () => {
+      mockFetch.mockReset()
+      mockFetchResponses({ features: { database: false } })
+      await renderApp()
+      await waitFor(() => {
+        expect(screen.queryByText('Todos')).toBeNull()
+      })
+    })
+  })
+
+  describe('todos page', () => {
+    it('navigates to todos page and shows items', async () => {
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => {
+        expect(screen.getByText('Buy milk')).toBeDefined()
+        expect(screen.getByText('Walk dog')).toBeDefined()
+      })
+    })
+
+    it('shows add form on todos page', async () => {
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Title')).toBeDefined()
+      })
+    })
+
+    it('submits new todo via POST', async () => {
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => { expect(screen.getByPlaceholderText('Title')).toBeDefined() })
+
+      await act(async () => {
+        fireEvent.change(screen.getByPlaceholderText('Title'), { target: { value: 'New task' } })
+        fireEvent.submit(screen.getByPlaceholderText('Title').closest('form')!)
+      })
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith('/api/todos', expect.objectContaining({ method: 'POST' }))
+      })
+    })
+
+    it('shows Complete button for open todos', async () => {
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => {
+        expect(screen.getByText('Complete')).toBeDefined()
+      })
+    })
+
+    it('calls PATCH when Complete is clicked', async () => {
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => { expect(screen.getByText('Complete')).toBeDefined() })
+
+      await act(async () => { fireEvent.click(screen.getByText('Complete')) })
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith('/api/todos/1', expect.objectContaining({ method: 'PATCH' }))
+      })
+    })
+
+    it('calls DELETE when Delete is clicked on first item', async () => {
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => { expect(screen.getAllByText('Delete').length).toBeGreaterThan(0) })
+
+      await act(async () => { fireEvent.click(screen.getAllByText('Delete')[0]) })
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith('/api/todos/1', expect.objectContaining({ method: 'DELETE' }))
+      })
+    })
+
+    it('shows empty state when no todos', async () => {
+      mockFetch.mockReset()
+      mockFetchResponses({ todos: [] })
+      await renderApp()
+      await waitFor(() => { expect(screen.getByText('Todos')).toBeDefined() })
+      await act(async () => { fireEvent.click(screen.getByText('Todos')) })
+      await waitFor(() => {
+        expect(screen.getByText('No todos yet. Add one above!')).toBeDefined()
+      })
+    })
+  })
+
   describe('api calls', () => {
     it('fetches /api/user on mount', async () => {
       await renderApp()
       expect(mockFetch).toHaveBeenCalledWith('/api/user')
+    })
+
+    it('fetches /api/features on mount', async () => {
+      await renderApp()
+      expect(mockFetch).toHaveBeenCalledWith('/api/features')
     })
   })
 })

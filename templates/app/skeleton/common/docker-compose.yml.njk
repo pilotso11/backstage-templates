@@ -1,6 +1,19 @@
 # Local development -- hot reload for all services
 # Usage: make dev  (or: docker compose up)
 services:
+{% if values.enableDatabase and values.backend !== "none" %}
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+{% endif %}
 {% if values.backend === "gofiber" %}
   backend:
     image: golang:1.25-alpine
@@ -12,6 +25,11 @@ services:
       - "8000:8000"
     environment:
       PORT: "8000"
+{% if values.enableDatabase %}
+      DATABASE_URL: "postgres://app:app@postgres:5432/app?sslmode=disable"
+    depends_on:
+      - postgres
+{% endif %}
     restart: unless-stopped
 
 {% elif values.backend === "fastapi" %}
@@ -37,4 +55,9 @@ services:
     ports:
       - "5173:5173"
     restart: unless-stopped
+{% endif %}
+{% if values.enableDatabase and values.backend !== "none" %}
+
+volumes:
+  pgdata:
 {% endif %}

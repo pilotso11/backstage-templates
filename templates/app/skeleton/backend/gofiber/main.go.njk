@@ -20,6 +20,17 @@ import (
 // @host            localhost:8000
 // @BasePath        /api
 func main() {
+	// Attempt database connection if DATABASE_URL is set
+	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+		db, err := InitDB(dsn)
+		if err != nil {
+			log.Printf("WARNING: database connection failed: %v", err)
+		} else {
+			appDB = db
+			log.Println("Database connected")
+		}
+	}
+
 	app := fiber.New()
 	app.Use(logger.New())
 	app.Use(cors.New())
@@ -31,6 +42,15 @@ func main() {
 	api.Get("/user", userHandler)
 	api.Post("/compute", computeHandler)
 	api.Get("/admin/users", adminUsersHandler)
+	api.Get("/features", featuresHandler)
+
+	if appDB != nil {
+		api.Get("/todos", listTodosHandler)
+		api.Post("/todos", createTodoHandler)
+		api.Patch("/todos/:id", updateTodoHandler)
+		api.Delete("/todos/:id", deleteTodoHandler)
+		log.Println("Todo routes enabled (database connected)")
+	}
 
 	staticDir := os.Getenv("STATIC_FILES_DIR")
 	if staticDir != "" {

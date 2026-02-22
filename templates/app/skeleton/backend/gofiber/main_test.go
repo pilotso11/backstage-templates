@@ -25,6 +25,13 @@ func testApp() *fiber.App {
 	api.Get("/user", userHandler)
 	api.Post("/compute", computeHandler)
 	api.Get("/admin/users", adminUsersHandler)
+	api.Get("/features", featuresHandler)
+	if appDB != nil {
+		api.Get("/todos", listTodosHandler)
+		api.Post("/todos", createTodoHandler)
+		api.Patch("/todos/:id", updateTodoHandler)
+		api.Delete("/todos/:id", deleteTodoHandler)
+	}
 	return app
 }
 
@@ -348,6 +355,23 @@ func TestAdminUsers_ReturnsUserList(t *testing.T) {
 	}
 	if len(resp.Users) != 2 {
 		t.Errorf("expected 2 users, got %d", len(resp.Users))
+	}
+}
+
+// ── /api/features ────────────────────────────────────────────────────────────
+
+func TestFeatures_NoDB(t *testing.T) {
+	saved := appDB
+	appDB = nil
+	defer func() { appDB = saved }()
+
+	_, body := doRequest(t, testApp(), "GET", "/api/features")
+	var resp FeaturesResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("unmarshal JSON: %v\nbody: %s", err, body)
+	}
+	if resp.Database {
+		t.Error("expected database=false when appDB is nil")
 	}
 }
 

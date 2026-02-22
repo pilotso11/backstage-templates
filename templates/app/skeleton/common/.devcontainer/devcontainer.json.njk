@@ -25,9 +25,14 @@
       "installOhMyZsh": true,
       "upgradePackages": true
     }
-  }{% if values.enableSSO %},
+  }{% if values.enableSSO or values.enableDatabase %},
   "containerEnv": {
+{% if values.enableSSO %}
     "DEV_MODE": "true",
-    "DEV_USER_EMAIL": "dev@example.com"
+    "DEV_USER_EMAIL": "dev@example.com"{% if values.enableDatabase %},{% endif %}
+{% endif %}
+{% if values.enableDatabase %}
+    "DATABASE_URL": "postgres://app:app@localhost:5432/app?sslmode=disable"
+{% endif %}
   }{% endif %}
 }

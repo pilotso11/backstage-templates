@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react'
 
-type Page = 'main' | 'admin'
+type Page = 'main' | 'admin' | 'todos'
 type Op = 'add' | 'sub' | 'mul' | 'div' | 'pow'
 
 interface User {
@@ -19,6 +19,19 @@ interface ComputeResult {
 interface AdminData {
   authorized: boolean
   users: string[]
+}
+
+interface Todo {
+  id: number
+  title: string
+  description: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface Features {
+  database: boolean
 }
 
 function MainPage() {
@@ -136,14 +149,168 @@ function AdminPage() {
   )
 }
 
+function TodosPage() {
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+
+  async function fetchTodos() {
+    try {
+      const resp = await fetch('/api/todos')
+      if (!resp.ok) throw new Error('Failed to fetch')
+      setTodos(await resp.json())
+    } catch {
+      setError('Failed to load todos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchTodos() }, [])
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    try {
+      const resp = await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json()
+        setError(data.error || 'Failed to create todo')
+        return
+      }
+      setTitle('')
+      setDescription('')
+      await fetchTodos()
+    } catch {
+      setError('Network error')
+    }
+  }
+
+  async function handleComplete(id: number) {
+    try {
+      await fetch(`/api/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      })
+      await fetchTodos()
+    } catch {
+      setError('Failed to update todo')
+    }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await fetch(`/api/todos/${id}`, { method: 'DELETE' })
+      await fetchTodos()
+    } catch {
+      setError('Failed to delete todo')
+    }
+  }
+
+  if (loading) return <p className="text-gray-500">Loading...</p>
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Todos</h2>
+
+      <form onSubmit={handleAdd} className="mb-6 space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Title"
+            required
+            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="text"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Description (optional)"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
+            Add
+          </button>
+        </div>
+      </form>
+
+      {error && <p className="mb-4 text-red-600">{error}</p>}
+
+      {todos.length === 0 ? (
+        <p className="text-gray-500">No todos yet. Add one above!</p>
+      ) : (
+        <ul className="space-y-2">
+          {todos.map(todo => (
+            <li
+              key={todo.id}
+              className={`flex items-center justify-between p-3 rounded border ${
+                todo.status === 'done' ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
+              }`}
+            >
+              <div className="flex-1">
+                <span className={`font-medium ${todo.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                  {todo.title}
+                </span>
+                {todo.description && (
+                  <span className={`ml-2 text-sm ${todo.status === 'done' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    — {todo.description}
+                  </span>
+                )}
+                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                  todo.status === 'done' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {todo.status}
+                </span>
+              </div>
+              <div className="flex gap-1 ml-4">
+                {todo.status === 'open' && (
+                  <button
+                    onClick={() => handleComplete(todo.id)}
+                    className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition"
+                  >
+                    Complete
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(todo.id)}
+                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function App() {
   const [page, setPage] = useState<Page>('main')
   const [user, setUser] = useState<User | null>(null)
+  const [dbEnabled, setDbEnabled] = useState(false)
 
   useEffect(() => {
     fetch('/api/user')
       .then(r => r.json())
       .then(setUser)
+    fetch('/api/features')
+      .then(r => r.json())
+      .then((f: Features) => setDbEnabled(f.database))
+      .catch(() => setDbEnabled(false))
   }, [])
 
   return (
@@ -158,6 +325,14 @@ function App() {
             >
               Calculator
             </button>
+            {dbEnabled && (
+              <button
+                onClick={() => setPage('todos')}
+                className={`text-sm font-medium ${page === 'todos' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Todos
+              </button>
+            )}
             <button
               onClick={() => setPage('admin')}
               className={`text-sm font-medium ${page === 'admin' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -174,7 +349,9 @@ function App() {
       </header>
       <main className="max-w-3xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow p-6">
-          {page === 'main' ? <MainPage /> : <AdminPage />}
+          {page === 'main' && <MainPage />}
+          {page === 'admin' && <AdminPage />}
+          {page === 'todos' && <TodosPage />}
         </div>
       </main>
     </div>
