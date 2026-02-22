@@ -74,8 +74,15 @@ func main() {
 // @Tags        ops
 // @Produce     json
 // @Success     200 {object} map[string]string
+// @Failure     503 {object} map[string]string
 // @Router      /healthz [get]
 func healthHandler(c *fiber.Ctx) error {
+	if os.Getenv("DATABASE_URL") != "" && appDB == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"status": "unhealthy",
+			"reason": "database not connected",
+		})
+	}
 	return c.JSON(fiber.Map{"status": "ok"})
 }
 

@@ -98,6 +98,35 @@ func TestHealthz_ContentType(t *testing.T) {
 	}
 }
 
+func TestHealthz_Unhealthy_WhenDBExpectedButNil(t *testing.T) {
+	saved := appDB
+	appDB = nil
+	defer func() { appDB = saved }()
+
+	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test")
+
+	resp, body := doRequest(t, testApp(), "GET", "/healthz")
+	if resp.StatusCode != 503 {
+		t.Errorf("expected 503, got %d", resp.StatusCode)
+	}
+	var m map[string]string
+	if err := json.Unmarshal(body, &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if m["status"] != "unhealthy" {
+		t.Errorf("expected status=unhealthy, got %q", m["status"])
+	}
+}
+
+func TestHealthz_Healthy_WhenDBNotExpected(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+
+	resp, _ := doRequest(t, testApp(), "GET", "/healthz")
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
 func TestHealthz_MethodNotAllowed(t *testing.T) {
 	for _, method := range []string{"POST", "PUT", "DELETE", "PATCH"} {
 		resp, _ := doRequest(t, testApp(), method, "/healthz")
