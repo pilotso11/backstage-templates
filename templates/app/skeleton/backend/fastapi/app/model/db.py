@@ -1,6 +1,8 @@
 """Database initialization and session dependency."""
 
 import logging
+import os
+import time
 from collections.abc import Generator
 from urllib.parse import urlparse, urlunparse
 
@@ -26,24 +28,47 @@ def build_dsn(base_url: str, user: str, password: str) -> str:
     return urlunparse(parsed._replace(scheme=scheme, netloc=netloc))
 
 
-def init_db(database_url: str) -> Engine:
-    """Create engine, run migrations, return engine."""
+def init_db(database_url: str, max_retries: int = 6, retry_delay: int = 5) -> Engine:
+    """Create engine, run migrations, return engine. Raise on failure after retries."""
     global _engine, _session_factory  # noqa: PLW0603
     from app.model.models import Base
 
-    # Enable echo for debugging table creation
-    _engine = create_engine(database_url, echo=(os.getenv("DEBUG") == "true"))
-    _session_factory = sessionmaker(bind=_engine)
+    retry_count = 0
 
-    # Create all tables in the public schema
-    logger.info("Creating database tables...")
-    try:
-        Base.metadata.create_all(bind=_engine, checkfirst=True)
-        logger.info("Database tables created successfully")
-    except Exception as e:
-        logger.error("Failed to create database tables: %s", e)
-        raise
-    return _engine
+    while retry_count < max_retries:
+        try:
+            logger.info("Connecting to database (attempt %d/%d)...", retry_count + 1, max_retries)
+            _engine = create_engine(database_url, echo=(os.getenv("DEBUG") == "true"))
+            _session_factory = sessionmaker(bind=_engine)
+
+            # Create all tables in the public schema
+            logger.info("Creating database tables...")
+            Base.metadata.create_all(bind=_engine, checkfirst=True)
+            logger.info("Database initialized successfully")
+            return _engine
+
+        except Exception as e:
+            retry_count += 1
+            if retry_count < max_retries:
+                logger.warning(
+                    "Database connection failed (attempt %d/%d): %s. Retrying in %ds...",
+                    retry_count,
+                    max_retries,
+                    e,
+                    retry_delay,
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(
+                    "Failed to connect to database after %d attempts: %s",
+                    max_retries,
+                    e,
+                )
+                raise RuntimeError(
+                    f"Database initialization failed after {max_retries} attempts"
+                ) from None  # noqa: B904
+    # Should never reach here
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def get_engine() -> Engine | None:

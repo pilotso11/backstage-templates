@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +28,8 @@ if _db_url:
         init_db(_dsn)
         logger.info("Database connected")
     except Exception:
-        logger.exception("WARNING: database connection failed")
+        logger.exception("Database connection failed, exiting")
+        sys.exit(1)
 
 # ── Routers ──────────────────────────────────────────────────────────────────
 
