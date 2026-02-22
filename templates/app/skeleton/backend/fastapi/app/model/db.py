@@ -18,7 +18,9 @@ def build_dsn(base_url: str, user: str, password: str) -> str:
     netloc = f"{user}:{password}@{parsed.hostname}"
     if parsed.port:
         netloc += f":{parsed.port}"
-    return urlunparse(parsed._replace(netloc=netloc))
+    # SQLAlchemy 2.x requires 'postgresql://' scheme, not 'postgres://'
+    scheme = "postgresql" if parsed.scheme == "postgres" else parsed.scheme
+    return urlunparse(parsed._replace(scheme=scheme, netloc=netloc))
 
 
 def init_db(database_url: str) -> Engine:

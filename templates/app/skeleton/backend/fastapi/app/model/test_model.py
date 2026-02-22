@@ -9,6 +9,11 @@ class TestBuildDSN:
         result = build_dsn("postgresql://localhost:5432/mydb", "user", "pass")
         assert result == "postgresql://user:pass@localhost:5432/mydb"
 
+    def test_postgres_scheme_converted_to_postgresql(self) -> None:
+        # CloudNativePG uses postgres:// but SQLAlchemy 2.x requires postgresql://
+        result = build_dsn("postgres://localhost:5432/mydb", "user", "pass")
+        assert result == "postgresql://user:pass@localhost:5432/mydb"
+
     def test_invalid_url_returns_original(self) -> None:
         result = build_dsn("not-a-url", "user", "pass")
         assert result == "not-a-url"
