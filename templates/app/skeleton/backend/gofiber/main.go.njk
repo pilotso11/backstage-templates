@@ -20,8 +20,11 @@ import (
 // @host            localhost:8000
 // @BasePath        /api
 func main() {
-	// Attempt database connection if DATABASE_URL is set
-	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+	// Attempt database connection if DATABASE_URL is set.
+	// Credentials are read from DB_USER / DB_PASS and injected at runtime
+	// so that DATABASE_URL never contains secrets.
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		dsn := BuildDSN(dbURL, os.Getenv("DB_USER"), os.Getenv("DB_PASS"))
 		db, err := InitDB(dsn)
 		if err != nil {
 			log.Printf("WARNING: database connection failed: %v", err)

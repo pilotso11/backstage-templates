@@ -274,6 +274,24 @@ func TestTodoToResponse(t *testing.T) {
 	}
 }
 
+// ── BuildDSN ─────────────────────────────────────────────────────────────────
+
+func TestBuildDSN(t *testing.T) {
+	dsn := BuildDSN("postgres://host:5432/mydb?sslmode=disable", "myuser", "mypass")
+	expected := "postgres://myuser:mypass@host:5432/mydb?sslmode=disable"
+	if dsn != expected {
+		t.Errorf("expected %q, got %q", expected, dsn)
+	}
+}
+
+func TestBuildDSN_InvalidURL(t *testing.T) {
+	// Falls back to returning the original string on parse error
+	dsn := BuildDSN("://bad", "u", "p")
+	if dsn != "://bad" {
+		t.Errorf("expected fallback to original, got %q", dsn)
+	}
+}
+
 // ── Todo routes not registered when appDB is nil ─────────────────────────────
 
 func TestTodoRoutes_NotRegistered_WhenNoDB(t *testing.T) {

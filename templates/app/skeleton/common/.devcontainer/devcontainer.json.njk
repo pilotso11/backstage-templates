@@ -32,7 +32,9 @@
     "DEV_USER_EMAIL": "dev@example.com"{% if values.enableDatabase %},{% endif %}
 {% endif %}
 {% if values.enableDatabase %}
-    "DATABASE_URL": "postgres://app:app@localhost:5432/app?sslmode=disable"
+    "DATABASE_URL": "postgres://localhost:5432/app?sslmode=disable",
+    "DB_USER": "app",
+    "DB_PASS": "app"
 {% endif %}
   }{% endif %}
 }

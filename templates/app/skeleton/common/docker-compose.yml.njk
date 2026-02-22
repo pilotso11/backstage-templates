@@ -26,7 +26,9 @@ services:
     environment:
       PORT: "8000"
 {% if values.enableDatabase %}
-      DATABASE_URL: "postgres://app:app@postgres:5432/app?sslmode=disable"
+      DATABASE_URL: "postgres://postgres:5432/app?sslmode=disable"
+      DB_USER: app
+      DB_PASS: app
     depends_on:
       - postgres
 {% endif %}
