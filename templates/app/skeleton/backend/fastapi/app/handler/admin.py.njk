@@ -6,11 +6,11 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from auth import get_auth_user
+from app.handler.auth import get_auth_user
 
 router = APIRouter()
 
-_AUTHORIZED_USERS_PATH = Path(__file__).parent / "authorized_users.json"
+_AUTHORIZED_USERS_PATH = Path(__file__).resolve().parent.parent.parent / "authorized_users.json"
 
 
 class AdminUsersResponse(BaseModel):

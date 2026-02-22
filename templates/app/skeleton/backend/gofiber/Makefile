@@ -7,7 +7,7 @@ build:
 	go build -ldflags="-w -s" -o $(BINARY) .
 
 test:
-	go test -race -coverprofile=coverage.out ./...
+	go test -race -coverprofile=coverage.out -coverpkg=./... ./...
 	go tool cover -html=coverage.out -o coverage.html
 
 lint:

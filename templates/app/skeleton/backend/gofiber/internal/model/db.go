@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"net/url"
@@ -6,9 +6,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-// appDB holds the database connection, nil when DATABASE_URL is not set.
-var appDB *gorm.DB
 
 // BuildDSN injects user/pass credentials into a base database URL.
 // The base URL should not contain credentials (e.g. "postgres://host:5432/db?sslmode=disable").

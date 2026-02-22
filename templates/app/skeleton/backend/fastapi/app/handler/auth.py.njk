@@ -8,7 +8,9 @@ a simulated user is returned from the DEV_USER_EMAIL env var.
 import os
 from dataclasses import dataclass
 
-from fastapi import Request
+from fastapi import APIRouter, Request
+
+router = APIRouter()
 
 
 @dataclass
@@ -41,3 +43,9 @@ def get_auth_user(request: Request) -> AuthUser:
         username=username,
         authenticated=bool(email),
     )
+
+
+@router.get("/api/user", tags=["auth"])
+async def user(request: Request) -> AuthUser:
+    """Get current user identity."""
+    return get_auth_user(request)

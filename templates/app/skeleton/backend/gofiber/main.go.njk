@@ -10,8 +10,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
+	"gorm.io/gorm"
 
 	_ "github.com/${{ values.owner }}/${{ values.name }}/docs"
+	"github.com/${{ values.owner }}/${{ values.name }}/internal/handler"
+	"github.com/${{ values.owner }}/${{ values.name }}/internal/model"
 )
 
 // @title           ${{ values.name }} API
@@ -20,16 +23,15 @@ import (
 // @host            localhost:8000
 // @BasePath        /api
 func main() {
-	// Attempt database connection if DATABASE_URL is set.
-	// Credentials are read from DB_USER / DB_PASS and injected at runtime
-	// so that DATABASE_URL never contains secrets.
+	var db *gorm.DB
+
 	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
-		dsn := BuildDSN(dbURL, os.Getenv("DB_USER"), os.Getenv("DB_PASS"))
-		db, err := InitDB(dsn)
+		dsn := model.BuildDSN(dbURL, os.Getenv("DB_USER"), os.Getenv("DB_PASS"))
+		var err error
+		db, err = model.InitDB(dsn)
 		if err != nil {
 			log.Printf("WARNING: database connection failed: %v", err)
 		} else {
-			appDB = db
 			log.Println("Database connected")
 		}
 	}
@@ -38,20 +40,24 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
+	health := &handler.HealthHandler{DB: db}
+	features := &handler.FeaturesHandler{DB: db}
+
 	app.Get("/swagger/*", swagger.HandlerDefault)
-	app.Get("/healthz", healthHandler)
+	app.Get("/healthz", health.Health)
 
 	api := app.Group("/api")
-	api.Get("/user", userHandler)
-	api.Post("/compute", computeHandler)
-	api.Get("/admin/users", adminUsersHandler)
-	api.Get("/features", featuresHandler)
+	api.Get("/user", handler.UserHandler)
+	api.Post("/compute", handler.ComputeHandler)
+	api.Get("/admin/users", handler.AdminUsersHandler)
+	api.Get("/features", features.Features)
 
-	if appDB != nil {
-		api.Get("/todos", listTodosHandler)
-		api.Post("/todos", createTodoHandler)
-		api.Patch("/todos/:id", updateTodoHandler)
-		api.Delete("/todos/:id", deleteTodoHandler)
+	if db != nil {
+		todos := &handler.TodoHandlers{DB: db}
+		api.Get("/todos", todos.List)
+		api.Post("/todos", todos.Create)
+		api.Patch("/todos/:id", todos.Update)
+		api.Delete("/todos/:id", todos.Delete)
 		log.Println("Todo routes enabled (database connected)")
 	}
 
@@ -67,32 +73,4 @@ func main() {
 		port = "8000"
 	}
 	log.Fatal(app.Listen(":" + port))
-}
-
-// healthHandler godoc
-// @Summary     Health check
-// @Tags        ops
-// @Produce     json
-// @Success     200 {object} map[string]string
-// @Failure     503 {object} map[string]string
-// @Router      /healthz [get]
-func healthHandler(c *fiber.Ctx) error {
-	if os.Getenv("DATABASE_URL") != "" && appDB == nil {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"status": "unhealthy",
-			"reason": "database not connected",
-		})
-	}
-	return c.JSON(fiber.Map{"status": "ok"})
-}
-
-// userHandler godoc
-// @Summary     Get current user identity
-// @Tags        auth
-// @Produce     json
-// @Success     200 {object} AuthUser
-// @Router      /api/user [get]
-func userHandler(c *fiber.Ctx) error {
-	user := GetAuthUser(c)
-	return c.JSON(user)
 }

@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"encoding/json"
@@ -33,13 +33,20 @@ func loadAuthorizedUsers() []string {
 	return authorizedUsers
 }
 
-// adminUsersHandler godoc
+// ResetAuthorizedUsersForTest resets the sync.Once so the next call to
+// loadAuthorizedUsers re-reads from disk. Only use in tests.
+func ResetAuthorizedUsersForTest() {
+	authorizedUsersOnce = *new(sync.Once)
+	authorizedUsers = nil
+}
+
+// AdminUsersHandler godoc
 // @Summary     List authorized users (admin)
 // @Tags        admin
 // @Produce     json
 // @Success     200 {object} AdminUsersResponse
 // @Router      /api/admin/users [get]
-func adminUsersHandler(c *fiber.Ctx) error {
+func AdminUsersHandler(c *fiber.Ctx) error {
 	user := GetAuthUser(c)
 	users := loadAuthorizedUsers()
 

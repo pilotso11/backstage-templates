@@ -13,7 +13,7 @@ install:
 build: install
 
 test:
-	$(VENV)/bin/pytest --cov=. --cov-report=xml --cov-report=term-missing
+	$(VENV)/bin/pytest --cov=app --cov=. --cov-report=xml --cov-report=term-missing
 
 lint:
 	$(VENV)/bin/ruff check .

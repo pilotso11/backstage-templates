@@ -11,10 +11,13 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/${{ values.owner }}/${{ values.name }}/internal/handler"
+	"github.com/${{ values.owner }}/${{ values.name }}/internal/model"
 )
 
-// setupMockDB creates a GORM *gorm.DB backed by sqlmock and sets appDB.
-func setupMockDB(t *testing.T) sqlmock.Sqlmock {
+// setupMockDB creates a GORM *gorm.DB backed by sqlmock.
+func setupMockDB(t *testing.T) (*gorm.DB, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -26,43 +29,41 @@ func setupMockDB(t *testing.T) sqlmock.Sqlmock {
 	if err != nil {
 		t.Fatalf("gorm.Open: %v", err)
 	}
-	appDB = gormDB
 	t.Cleanup(func() {
-		appDB = nil
 		_ = db.Close()
 	})
-	return mock
+	return gormDB, mock
 }
 
 // ── GET /api/features (with DB) ──────────────────────────────────────────────
 
 func TestFeatures_WithDB(t *testing.T) {
-	setupMockDB(t)
+	db, _ := setupMockDB(t)
 
-	_, body := doRequest(t, testApp(), "GET", "/api/features")
-	var resp FeaturesResponse
+	_, body := doRequest(t, testAppWithDB(db), "GET", "/api/features")
+	var resp handler.FeaturesResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if !resp.Database {
-		t.Error("expected database=true when appDB is set")
+		t.Error("expected database=true when db is set")
 	}
 }
 
 // ── GET /api/todos ───────────────────────────────────────────────────────────
 
 func TestListTodos_Empty(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	rows := sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "title", "description", "status"})
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "todos" WHERE "todos"."deleted_at" IS NULL ORDER BY created_at desc`)).
 		WillReturnRows(rows)
 
-	resp, body := doRequest(t, testApp(), "GET", "/api/todos")
+	resp, body := doRequest(t, testAppWithDB(db), "GET", "/api/todos")
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var todos []TodoResponse
+	var todos []model.TodoResponse
 	if err := json.Unmarshal(body, &todos); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestListTodos_Empty(t *testing.T) {
 }
 
 func TestListTodos_ReturnsTodos(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	now := time.Now()
 	rows := sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "title", "description", "status"}).
@@ -81,11 +82,11 @@ func TestListTodos_ReturnsTodos(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "todos" WHERE "todos"."deleted_at" IS NULL ORDER BY created_at desc`)).
 		WillReturnRows(rows)
 
-	resp, body := doRequest(t, testApp(), "GET", "/api/todos")
+	resp, body := doRequest(t, testAppWithDB(db), "GET", "/api/todos")
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var todos []TodoResponse
+	var todos []model.TodoResponse
 	if err := json.Unmarshal(body, &todos); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -100,7 +101,7 @@ func TestListTodos_ReturnsTodos(t *testing.T) {
 // ── POST /api/todos ──────────────────────────────────────────────────────────
 
 func TestCreateTodo_Success(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "todos"`)).
@@ -108,14 +109,14 @@ func TestCreateTodo_Success(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	mock.ExpectCommit()
 
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/todos", TodoCreateRequest{
+	resp, body := doJSONRequest(t, testAppWithDB(db), "POST", "/api/todos", model.TodoCreateRequest{
 		Title:       "Buy milk",
 		Description: "From the store",
 	})
 	if resp.StatusCode != 201 {
 		t.Fatalf("expected 201, got %d; body: %s", resp.StatusCode, body)
 	}
-	var todo TodoResponse
+	var todo model.TodoResponse
 	if err := json.Unmarshal(body, &todo); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -128,9 +129,9 @@ func TestCreateTodo_Success(t *testing.T) {
 }
 
 func TestCreateTodo_EmptyTitle(t *testing.T) {
-	setupMockDB(t)
+	db, _ := setupMockDB(t)
 
-	resp, _ := doJSONRequest(t, testApp(), "POST", "/api/todos", TodoCreateRequest{
+	resp, _ := doJSONRequest(t, testAppWithDB(db), "POST", "/api/todos", model.TodoCreateRequest{
 		Title: "",
 	})
 	if resp.StatusCode != 400 {
@@ -139,9 +140,9 @@ func TestCreateTodo_EmptyTitle(t *testing.T) {
 }
 
 func TestCreateTodo_InvalidBody(t *testing.T) {
-	setupMockDB(t)
+	db, _ := setupMockDB(t)
 
-	app := testApp()
+	app := testAppWithDB(db)
 	req := httptest.NewRequest("POST", "/api/todos", strings.NewReader("not json"))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, -1)
@@ -156,7 +157,7 @@ func TestCreateTodo_InvalidBody(t *testing.T) {
 // ── PATCH /api/todos/:id ─────────────────────────────────────────────────────
 
 func TestUpdateTodo_Complete(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	now := time.Now()
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "todos" WHERE "todos"."id" = $1 AND "todos"."deleted_at" IS NULL ORDER BY "todos"."id" LIMIT $2`)).
@@ -169,13 +170,13 @@ func TestUpdateTodo_Complete(t *testing.T) {
 	mock.ExpectCommit()
 
 	done := "done"
-	resp, body := doJSONRequest(t, testApp(), "PATCH", "/api/todos/1", TodoUpdateRequest{
+	resp, body := doJSONRequest(t, testAppWithDB(db), "PATCH", "/api/todos/1", model.TodoUpdateRequest{
 		Status: &done,
 	})
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d; body: %s", resp.StatusCode, body)
 	}
-	var todo TodoResponse
+	var todo model.TodoResponse
 	if err := json.Unmarshal(body, &todo); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -185,7 +186,7 @@ func TestUpdateTodo_Complete(t *testing.T) {
 }
 
 func TestUpdateTodo_InvalidStatus(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	now := time.Now()
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "todos" WHERE "todos"."id" = $1 AND "todos"."deleted_at" IS NULL ORDER BY "todos"."id" LIMIT $2`)).
@@ -193,7 +194,7 @@ func TestUpdateTodo_InvalidStatus(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at", "deleted_at", "title", "description", "status"}).
 			AddRow(1, now, now, nil, "Buy milk", "", "open"))
 	bad := "invalid"
-	resp, _ := doJSONRequest(t, testApp(), "PATCH", "/api/todos/1", TodoUpdateRequest{
+	resp, _ := doJSONRequest(t, testAppWithDB(db), "PATCH", "/api/todos/1", model.TodoUpdateRequest{
 		Status: &bad,
 	})
 	if resp.StatusCode != 400 {
@@ -202,14 +203,14 @@ func TestUpdateTodo_InvalidStatus(t *testing.T) {
 }
 
 func TestUpdateTodo_NotFound(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "todos" WHERE "todos"."id" = $1 AND "todos"."deleted_at" IS NULL ORDER BY "todos"."id" LIMIT $2`)).
 		WithArgs(999, 1).
 		WillReturnError(gorm.ErrRecordNotFound)
 
 	done := "done"
-	resp, _ := doJSONRequest(t, testApp(), "PATCH", "/api/todos/999", TodoUpdateRequest{
+	resp, _ := doJSONRequest(t, testAppWithDB(db), "PATCH", "/api/todos/999", model.TodoUpdateRequest{
 		Status: &done,
 	})
 	if resp.StatusCode != 404 {
@@ -220,7 +221,7 @@ func TestUpdateTodo_NotFound(t *testing.T) {
 // ── DELETE /api/todos/:id ────────────────────────────────────────────────────
 
 func TestDeleteTodo_Success(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(`UPDATE "todos" SET "deleted_at"=$1 WHERE "todos"."id" = $2 AND "todos"."deleted_at" IS NULL`)).
@@ -228,14 +229,14 @@ func TestDeleteTodo_Success(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	resp, _ := doRequest(t, testApp(), "DELETE", "/api/todos/1")
+	resp, _ := doRequest(t, testAppWithDB(db), "DELETE", "/api/todos/1")
 	if resp.StatusCode != 204 {
 		t.Errorf("expected 204, got %d", resp.StatusCode)
 	}
 }
 
 func TestDeleteTodo_NotFound(t *testing.T) {
-	mock := setupMockDB(t)
+	db, mock := setupMockDB(t)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(`UPDATE "todos" SET "deleted_at"=$1 WHERE "todos"."id" = $2 AND "todos"."deleted_at" IS NULL`)).
@@ -243,7 +244,7 @@ func TestDeleteTodo_NotFound(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
-	resp, _ := doRequest(t, testApp(), "DELETE", "/api/todos/999")
+	resp, _ := doRequest(t, testAppWithDB(db), "DELETE", "/api/todos/999")
 	if resp.StatusCode != 404 {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
 	}
@@ -253,7 +254,7 @@ func TestDeleteTodo_NotFound(t *testing.T) {
 
 func TestTodoToResponse(t *testing.T) {
 	now := time.Now()
-	todo := Todo{
+	todo := model.Todo{
 		Title:       "Test",
 		Description: "Desc",
 		Status:      "open",
@@ -277,7 +278,7 @@ func TestTodoToResponse(t *testing.T) {
 // ── BuildDSN ─────────────────────────────────────────────────────────────────
 
 func TestBuildDSN(t *testing.T) {
-	dsn := BuildDSN("postgres://host:5432/mydb?sslmode=disable", "myuser", "mypass")
+	dsn := model.BuildDSN("postgres://host:5432/mydb?sslmode=disable", "myuser", "mypass")
 	expected := "postgres://myuser:mypass@host:5432/mydb?sslmode=disable"
 	if dsn != expected {
 		t.Errorf("expected %q, got %q", expected, dsn)
@@ -285,21 +286,16 @@ func TestBuildDSN(t *testing.T) {
 }
 
 func TestBuildDSN_InvalidURL(t *testing.T) {
-	// Falls back to returning the original string on parse error
-	dsn := BuildDSN("://bad", "u", "p")
+	dsn := model.BuildDSN("://bad", "u", "p")
 	if dsn != "://bad" {
 		t.Errorf("expected fallback to original, got %q", dsn)
 	}
 }
 
-// ── Todo routes not registered when appDB is nil ─────────────────────────────
+// ── Todo routes not registered when db is nil ────────────────────────────────
 
 func TestTodoRoutes_NotRegistered_WhenNoDB(t *testing.T) {
-	saved := appDB
-	appDB = nil
-	defer func() { appDB = saved }()
-
-	app := testApp()
+	app := testAppWithDB(nil)
 	for _, path := range []string{"/api/todos"} {
 		resp, _ := doRequest(t, app, "GET", path)
 		if resp.StatusCode != 404 {

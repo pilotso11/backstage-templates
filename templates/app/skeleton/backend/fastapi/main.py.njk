@@ -1,11 +1,16 @@
+"""${{ values.name }} API — entry point."""
+
+import logging
 import os
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from admin import router as admin_router
-from auth import AuthUser, get_auth_user
-from compute import router as compute_router
+from app.handler import admin, auth, compute, features, health, todo
+from app.model.db import build_dsn, get_engine, init_db
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="${{ values.name }} API",
@@ -13,23 +18,31 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(compute_router)
-app.include_router(admin_router)
+# ── Database (optional) ──────────────────────────────────────────────────────
 
+_db_url = os.getenv("DATABASE_URL")
+if _db_url:
+    _dsn = build_dsn(_db_url, os.getenv("DB_USER", ""), os.getenv("DB_PASS", ""))
+    try:
+        init_db(_dsn)
+        logger.info("Database connected")
+    except Exception:
+        logger.exception("WARNING: database connection failed")
 
-@app.get("/healthz", tags=["ops"])
-async def health() -> dict[str, str]:
-    """Health check endpoint."""
-    return {"status": "ok"}
+# ── Routers ──────────────────────────────────────────────────────────────────
 
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(compute.router)
+app.include_router(admin.router)
+app.include_router(features.router)
 
-@app.get("/api/user", tags=["auth"])
-async def user(request: Request) -> AuthUser:
-    """Get current user identity."""
-    return get_auth_user(request)
+if get_engine() is not None:
+    app.include_router(todo.router)
+    logger.info("Todo routes enabled (database connected)")
 
+# ── Static files ─────────────────────────────────────────────────────────────
 
-# Serve frontend static files if STATIC_FILES_DIR is set
 _static_dir = os.getenv("STATIC_FILES_DIR")
 if _static_dir and os.path.isdir(_static_dir):
     app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")

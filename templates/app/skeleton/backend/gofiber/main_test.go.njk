@@ -8,29 +8,37 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
+
+	"github.com/${{ values.owner }}/${{ values.name }}/internal/handler"
 )
 
-// testApp builds a minimal app with handlers wired — no middleware
+// testAppWithDB builds a minimal app with handlers wired — no middleware
 // that would interfere with tests (no logger noise, no static files).
-func testApp() *fiber.App {
+func testAppWithDB(db *gorm.DB) *fiber.App {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
-	app.Get("/healthz", healthHandler)
+
+	health := &handler.HealthHandler{DB: db}
+	features := &handler.FeaturesHandler{DB: db}
+
+	app.Get("/healthz", health.Health)
 	api := app.Group("/api")
-	api.Get("/user", userHandler)
-	api.Post("/compute", computeHandler)
-	api.Get("/admin/users", adminUsersHandler)
-	api.Get("/features", featuresHandler)
-	if appDB != nil {
-		api.Get("/todos", listTodosHandler)
-		api.Post("/todos", createTodoHandler)
-		api.Patch("/todos/:id", updateTodoHandler)
-		api.Delete("/todos/:id", deleteTodoHandler)
+	api.Get("/user", handler.UserHandler)
+	api.Post("/compute", handler.ComputeHandler)
+	api.Get("/admin/users", handler.AdminUsersHandler)
+	api.Get("/features", features.Features)
+
+	if db != nil {
+		todos := &handler.TodoHandlers{DB: db}
+		api.Get("/todos", todos.List)
+		api.Post("/todos", todos.Create)
+		api.Patch("/todos/:id", todos.Update)
+		api.Delete("/todos/:id", todos.Delete)
 	}
 	return app
 }
@@ -73,14 +81,14 @@ func doJSONRequest(t *testing.T, app *fiber.App, method, path string, payload an
 // ── /healthz ──────────────────────────────────────────────────────────────────
 
 func TestHealthz_Status200(t *testing.T) {
-	resp, _ := doRequest(t, testApp(), "GET", "/healthz")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/healthz")
 	if resp.StatusCode != 200 {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
 }
 
 func TestHealthz_JSONBody(t *testing.T) {
-	_, body := doRequest(t, testApp(), "GET", "/healthz")
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/healthz")
 	var m map[string]string
 	if err := json.Unmarshal(body, &m); err != nil {
 		t.Fatalf("unmarshal JSON: %v\nbody: %s", err, body)
@@ -91,7 +99,7 @@ func TestHealthz_JSONBody(t *testing.T) {
 }
 
 func TestHealthz_ContentType(t *testing.T) {
-	resp, _ := doRequest(t, testApp(), "GET", "/healthz")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/healthz")
 	ct := resp.Header.Get("Content-Type")
 	if !strings.Contains(ct, "application/json") {
 		t.Errorf("expected application/json content-type, got %q", ct)
@@ -99,13 +107,9 @@ func TestHealthz_ContentType(t *testing.T) {
 }
 
 func TestHealthz_Unhealthy_WhenDBExpectedButNil(t *testing.T) {
-	saved := appDB
-	appDB = nil
-	defer func() { appDB = saved }()
-
 	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test")
 
-	resp, body := doRequest(t, testApp(), "GET", "/healthz")
+	resp, body := doRequest(t, testAppWithDB(nil), "GET", "/healthz")
 	if resp.StatusCode != 503 {
 		t.Errorf("expected 503, got %d", resp.StatusCode)
 	}
@@ -121,7 +125,7 @@ func TestHealthz_Unhealthy_WhenDBExpectedButNil(t *testing.T) {
 func TestHealthz_Healthy_WhenDBNotExpected(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
 
-	resp, _ := doRequest(t, testApp(), "GET", "/healthz")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/healthz")
 	if resp.StatusCode != 200 {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -129,7 +133,7 @@ func TestHealthz_Healthy_WhenDBNotExpected(t *testing.T) {
 
 func TestHealthz_MethodNotAllowed(t *testing.T) {
 	for _, method := range []string{"POST", "PUT", "DELETE", "PATCH"} {
-		resp, _ := doRequest(t, testApp(), method, "/healthz")
+		resp, _ := doRequest(t, testAppWithDB(nil), method, "/healthz")
 		if resp.StatusCode != http.StatusMethodNotAllowed {
 			t.Errorf("%s /healthz: expected 405, got %d", method, resp.StatusCode)
 		}
@@ -140,7 +144,7 @@ func TestHealthz_MethodNotAllowed(t *testing.T) {
 
 func TestUser_Status200(t *testing.T) {
 	t.Setenv("DEV_MODE", "true")
-	resp, _ := doRequest(t, testApp(), "GET", "/api/user")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/api/user")
 	if resp.StatusCode != 200 {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -149,8 +153,8 @@ func TestUser_Status200(t *testing.T) {
 func TestUser_DevMode_ReturnsDevUser(t *testing.T) {
 	t.Setenv("DEV_MODE", "true")
 	t.Setenv("DEV_USER_EMAIL", "test@example.com")
-	_, body := doRequest(t, testApp(), "GET", "/api/user")
-	var user AuthUser
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/api/user")
+	var user handler.AuthUser
 	if err := json.Unmarshal(body, &user); err != nil {
 		t.Fatalf("unmarshal JSON: %v\nbody: %s", err, body)
 	}
@@ -164,8 +168,8 @@ func TestUser_DevMode_ReturnsDevUser(t *testing.T) {
 
 func TestUser_NoHeaders_NotAuthenticated(t *testing.T) {
 	t.Setenv("DEV_MODE", "false")
-	_, body := doRequest(t, testApp(), "GET", "/api/user")
-	var user AuthUser
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/api/user")
+	var user handler.AuthUser
 	if err := json.Unmarshal(body, &user); err != nil {
 		t.Fatalf("unmarshal JSON: %v\nbody: %s", err, body)
 	}
@@ -176,7 +180,7 @@ func TestUser_NoHeaders_NotAuthenticated(t *testing.T) {
 
 func TestUser_ContentType(t *testing.T) {
 	t.Setenv("DEV_MODE", "true")
-	resp, _ := doRequest(t, testApp(), "GET", "/api/user")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/api/user")
 	ct := resp.Header.Get("Content-Type")
 	if !strings.Contains(ct, "application/json") {
 		t.Errorf("expected application/json content-type, got %q", ct)
@@ -186,11 +190,11 @@ func TestUser_ContentType(t *testing.T) {
 // ── POST /api/compute ─────────────────────────────────────────────────────────
 
 func TestCompute_Add(t *testing.T) {
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 2, Op: "add", B: 3})
+	resp, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 2, Op: "add", B: 3})
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var result ComputeResponse
+	var result handler.ComputeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -200,11 +204,11 @@ func TestCompute_Add(t *testing.T) {
 }
 
 func TestCompute_Sub(t *testing.T) {
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 10, Op: "sub", B: 3})
+	resp, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 10, Op: "sub", B: 3})
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var result ComputeResponse
+	var result handler.ComputeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -214,11 +218,11 @@ func TestCompute_Sub(t *testing.T) {
 }
 
 func TestCompute_Mul(t *testing.T) {
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 4, Op: "mul", B: 5})
+	resp, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 4, Op: "mul", B: 5})
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var result ComputeResponse
+	var result handler.ComputeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -228,11 +232,11 @@ func TestCompute_Mul(t *testing.T) {
 }
 
 func TestCompute_Div(t *testing.T) {
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 10, Op: "div", B: 4})
+	resp, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 10, Op: "div", B: 4})
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var result ComputeResponse
+	var result handler.ComputeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -242,11 +246,11 @@ func TestCompute_Div(t *testing.T) {
 }
 
 func TestCompute_Pow(t *testing.T) {
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 2, Op: "pow", B: 10})
+	resp, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 2, Op: "pow", B: 10})
 	if resp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var result ComputeResponse
+	var result handler.ComputeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -256,14 +260,14 @@ func TestCompute_Pow(t *testing.T) {
 }
 
 func TestCompute_DivByZero(t *testing.T) {
-	resp, _ := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 1, Op: "div", B: 0})
+	resp, _ := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 1, Op: "div", B: 0})
 	if resp.StatusCode != 400 {
 		t.Errorf("expected 400, got %d", resp.StatusCode)
 	}
 }
 
 func TestCompute_InvalidOp(t *testing.T) {
-	resp, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 1, Op: "modulo", B: 2})
+	resp, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 1, Op: "modulo", B: 2})
 	if resp.StatusCode != 400 {
 		t.Errorf("expected 400, got %d", resp.StatusCode)
 	}
@@ -277,7 +281,7 @@ func TestCompute_InvalidOp(t *testing.T) {
 }
 
 func TestCompute_InvalidBody(t *testing.T) {
-	app := testApp()
+	app := testAppWithDB(nil)
 	req := httptest.NewRequest("POST", "/api/compute", strings.NewReader("not json"))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, -1)
@@ -290,15 +294,15 @@ func TestCompute_InvalidBody(t *testing.T) {
 }
 
 func TestCompute_GetMethodNotAllowed(t *testing.T) {
-	resp, _ := doRequest(t, testApp(), "GET", "/api/compute")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/api/compute")
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("GET /api/compute: expected 405, got %d", resp.StatusCode)
 	}
 }
 
 func TestCompute_ResponseIncludesInputs(t *testing.T) {
-	_, body := doJSONRequest(t, testApp(), "POST", "/api/compute", ComputeRequest{A: 7, Op: "add", B: 3})
-	var result ComputeResponse
+	_, body := doJSONRequest(t, testAppWithDB(nil), "POST", "/api/compute", handler.ComputeRequest{A: 7, Op: "add", B: 3})
+	var result handler.ComputeResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -311,18 +315,15 @@ func TestCompute_ResponseIncludesInputs(t *testing.T) {
 
 func TestAdminUsers_Status200(t *testing.T) {
 	t.Setenv("DEV_MODE", "true")
-	resp, _ := doRequest(t, testApp(), "GET", "/api/admin/users")
+	resp, _ := doRequest(t, testAppWithDB(nil), "GET", "/api/admin/users")
 	if resp.StatusCode != 200 {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
 }
 
 func TestAdminUsers_DevUser_IsAuthorized(t *testing.T) {
-	// Reset the sync.Once so it reloads
-	authorizedUsersOnce = *new(sync.Once)
-	authorizedUsers = nil
+	handler.ResetAuthorizedUsersForTest()
 
-	// Write a temp authorized_users.json
 	tmpFile := "authorized_users.json"
 	if err := os.WriteFile(tmpFile, []byte(`["dev@example.com"]`), 0644); err != nil {
 		t.Fatalf("write temp file: %v", err)
@@ -332,8 +333,8 @@ func TestAdminUsers_DevUser_IsAuthorized(t *testing.T) {
 	t.Setenv("DEV_MODE", "true")
 	t.Setenv("DEV_USER_EMAIL", "dev@example.com")
 
-	_, body := doRequest(t, testApp(), "GET", "/api/admin/users")
-	var resp AdminUsersResponse
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/api/admin/users")
+	var resp handler.AdminUsersResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -343,8 +344,7 @@ func TestAdminUsers_DevUser_IsAuthorized(t *testing.T) {
 }
 
 func TestAdminUsers_UnknownUser_NotAuthorized(t *testing.T) {
-	authorizedUsersOnce = *new(sync.Once)
-	authorizedUsers = nil
+	handler.ResetAuthorizedUsersForTest()
 
 	tmpFile := "authorized_users.json"
 	if err := os.WriteFile(tmpFile, []byte(`["dev@example.com"]`), 0644); err != nil {
@@ -355,8 +355,8 @@ func TestAdminUsers_UnknownUser_NotAuthorized(t *testing.T) {
 	t.Setenv("DEV_MODE", "true")
 	t.Setenv("DEV_USER_EMAIL", "stranger@example.com")
 
-	_, body := doRequest(t, testApp(), "GET", "/api/admin/users")
-	var resp AdminUsersResponse
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/api/admin/users")
+	var resp handler.AdminUsersResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -366,8 +366,7 @@ func TestAdminUsers_UnknownUser_NotAuthorized(t *testing.T) {
 }
 
 func TestAdminUsers_ReturnsUserList(t *testing.T) {
-	authorizedUsersOnce = *new(sync.Once)
-	authorizedUsers = nil
+	handler.ResetAuthorizedUsersForTest()
 
 	tmpFile := "authorized_users.json"
 	if err := os.WriteFile(tmpFile, []byte(`["dev@example.com","admin@example.com"]`), 0644); err != nil {
@@ -377,8 +376,8 @@ func TestAdminUsers_ReturnsUserList(t *testing.T) {
 
 	t.Setenv("DEV_MODE", "true")
 
-	_, body := doRequest(t, testApp(), "GET", "/api/admin/users")
-	var resp AdminUsersResponse
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/api/admin/users")
+	var resp handler.AdminUsersResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
@@ -390,17 +389,13 @@ func TestAdminUsers_ReturnsUserList(t *testing.T) {
 // ── /api/features ────────────────────────────────────────────────────────────
 
 func TestFeatures_NoDB(t *testing.T) {
-	saved := appDB
-	appDB = nil
-	defer func() { appDB = saved }()
-
-	_, body := doRequest(t, testApp(), "GET", "/api/features")
-	var resp FeaturesResponse
+	_, body := doRequest(t, testAppWithDB(nil), "GET", "/api/features")
+	var resp handler.FeaturesResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("unmarshal JSON: %v\nbody: %s", err, body)
 	}
 	if resp.Database {
-		t.Error("expected database=false when appDB is nil")
+		t.Error("expected database=false when db is nil")
 	}
 }
 
@@ -408,7 +403,7 @@ func TestFeatures_NoDB(t *testing.T) {
 
 func TestUnknownRoute_404(t *testing.T) {
 	for _, path := range []string{"/notfound", "/api/notfound", "/api/"} {
-		resp, _ := doRequest(t, testApp(), "GET", path)
+		resp, _ := doRequest(t, testAppWithDB(nil), "GET", path)
 		if resp.StatusCode != http.StatusNotFound {
 			t.Errorf("GET %s: expected 404, got %d", path, resp.StatusCode)
 		}

@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"math"
@@ -21,7 +21,7 @@ type ComputeResponse struct {
 	Result float64 `json:"result"`
 }
 
-// computeHandler godoc
+// ComputeHandler godoc
 // @Summary     Compute a math operation
 // @Tags        compute
 // @Accept      json
@@ -30,7 +30,7 @@ type ComputeResponse struct {
 // @Success     200 {object} ComputeResponse
 // @Failure     400 {object} map[string]string
 // @Router      /api/compute [post]
-func computeHandler(c *fiber.Ctx) error {
+func ComputeHandler(c *fiber.Ctx) error {
 	var req ComputeRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
