@@ -47,4 +47,8 @@ spec:
   type: openapi
   lifecycle: experimental
   owner: user:default/${{ values.backstageUser }}
+  definition:
+    # OpenAPI spec is generated during build (swag init for Go, auto for FastAPI)
+    # Update the definition via the Backstage UI after first deployment
+    text: "openapi: 3.0.0\ninfo:\n  title: ${{ values.name }} API\n  version: 1.0.0"
 {% endif %}
