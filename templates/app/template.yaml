@@ -205,5 +205,3 @@ spec:
         url: ${{ steps['register'].output.entityRef }}
       - title: Cluster registration PR
         url: ${{ steps['register-with-flux'].output.pullRequestUrl }}
-      - title: OpenAPI spec PR (created by first CI build)
-        url: https://github.com/pilotso11/${{ parameters.name }}/pulls

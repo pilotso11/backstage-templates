@@ -1,0 +1,272 @@
+basePath: /api
+definitions:
+  handler.AdminUsersResponse:
+    properties:
+      authorized:
+        type: boolean
+      users:
+        items:
+          type: string
+        type: array
+    type: object
+  handler.AuthUser:
+    properties:
+      authenticated:
+        type: boolean
+      email:
+        type: string
+      user:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.ComputeRequest:
+    properties:
+      a:
+        type: number
+      b:
+        type: number
+      op:
+        type: string
+    type: object
+  handler.ComputeResponse:
+    properties:
+      a:
+        type: number
+      b:
+        type: number
+      op:
+        type: string
+      result:
+        type: number
+    type: object
+  handler.FeaturesResponse:
+    properties:
+      database:
+        type: boolean
+    type: object
+  model.TodoCreateRequest:
+    properties:
+      description:
+        type: string
+      title:
+        type: string
+    type: object
+  model.TodoResponse:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.TodoUpdateRequest:
+    properties:
+      description:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: Test application
+  title: testapp API
+  version: "1.0"
+paths:
+  /api/admin/users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AdminUsersResponse'
+      summary: List authorized users (admin)
+      tags:
+      - admin
+  /api/compute:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Compute request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ComputeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ComputeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Compute a math operation
+      tags:
+      - compute
+  /api/features:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.FeaturesResponse'
+      summary: List enabled features
+      tags:
+      - ops
+  /api/todos:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.TodoResponse'
+            type: array
+      summary: List all todos
+      tags:
+      - todos
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Todo to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TodoCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new todo
+      tags:
+      - todos
+  /api/todos/{id}:
+    delete:
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a todo
+      tags:
+      - todos
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TodoUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an existing todo
+      tags:
+      - todos
+  /api/user:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AuthUser'
+      summary: Get current user identity
+      tags:
+      - auth
+  /healthz:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - ops
+swagger: "2.0"

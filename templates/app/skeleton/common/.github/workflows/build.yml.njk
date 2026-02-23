@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
 {% if values.backend === "gofiber" %}
@@ -37,19 +36,12 @@ jobs:
       - name: Copy swagger JSON for catalog
         run: cp docs/swagger.json docs/openapi.json
 
-      - name: Update OpenAPI spec PR
-        if: {% raw %}${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}{% endraw %}
-        uses: peter-evans/create-pull-request@v7
+      - name: Commit OpenAPI spec
+        if: {% raw %}${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}{% endraw %}
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit-message: "chore: update OpenAPI spec"
-          branch: chore/update-openapi-spec
-          title: "chore: update OpenAPI spec"
-          body: "Auto-generated OpenAPI spec from CI build."
-          add-paths: |
-            backend/docs/openapi.json
-            backend/docs/swagger.json
-            backend/docs/swagger.yaml
-            backend/docs/docs.go
+          commit_message: "chore: update OpenAPI spec [skip ci]"
+          file_pattern: backend/docs/openapi.json backend/docs/swagger.json backend/docs/swagger.yaml backend/docs/docs.go
 
       - name: Lint
         uses: golangci/golangci-lint-action@v9
@@ -100,16 +92,12 @@ jobs:
           mkdir -p docs
           python -c "from main import app; import json; f=open('docs/openapi.json','w'); json.dump(app.openapi(), f, indent=2); f.close()"
 
-      - name: Update OpenAPI spec PR
-        if: {% raw %}${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}{% endraw %}
-        uses: peter-evans/create-pull-request@v7
+      - name: Commit OpenAPI spec
+        if: {% raw %}${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}{% endraw %}
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit-message: "chore: update OpenAPI spec"
-          branch: chore/update-openapi-spec
-          title: "chore: update OpenAPI spec"
-          body: "Auto-generated OpenAPI spec from CI build."
-          add-paths: |
-            backend/docs/openapi.json
+          commit_message: "chore: update OpenAPI spec [skip ci]"
+          file_pattern: backend/docs/openapi.json
 
       - name: Lint (ruff)
         run: |

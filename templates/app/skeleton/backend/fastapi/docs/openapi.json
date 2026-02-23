@@ -1,0 +1,314 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "testapp API",
+    "description": "Test application",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Health",
+        "description": "Health check \u2014 returns 503 if DATABASE_URL is set but DB is not connected.",
+        "operationId": "health_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Healthz Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "User",
+        "description": "Get current user identity.",
+        "operationId": "user_api_user_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compute": {
+      "post": {
+        "tags": [
+          "compute"
+        ],
+        "summary": "Compute",
+        "description": "Compute a math operation: add, sub, mul, div, pow.",
+        "operationId": "compute_api_compute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Users",
+        "description": "List authorized users. Returns whether current user is authorized.",
+        "operationId": "admin_users_api_admin_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUsersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/features": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Features",
+        "description": "List enabled features.",
+        "operationId": "features_api_features_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminUsersResponse": {
+        "properties": {
+          "authorized": {
+            "type": "boolean",
+            "title": "Authorized"
+          },
+          "users": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Users"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorized",
+          "users"
+        ],
+        "title": "AdminUsersResponse"
+      },
+      "AuthUser": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "user": {
+            "type": "string",
+            "title": "User"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "authenticated": {
+            "type": "boolean",
+            "title": "Authenticated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "user",
+          "username",
+          "authenticated"
+        ],
+        "title": "AuthUser"
+      },
+      "ComputeRequest": {
+        "properties": {
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "op": {
+            "type": "string",
+            "title": "Op"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "op",
+          "b"
+        ],
+        "title": "ComputeRequest"
+      },
+      "ComputeResponse": {
+        "properties": {
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "op": {
+            "type": "string",
+            "title": "Op"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          },
+          "result": {
+            "type": "number",
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "op",
+          "b",
+          "result"
+        ],
+        "title": "ComputeResponse"
+      },
+      "FeaturesResponse": {
+        "properties": {
+          "database": {
+            "type": "boolean",
+            "title": "Database"
+          }
+        },
+        "type": "object",
+        "required": [
+          "database"
+        ],
+        "title": "FeaturesResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
