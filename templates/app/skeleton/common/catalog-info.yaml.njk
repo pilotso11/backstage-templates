@@ -67,4 +67,23 @@ spec:
           responses:
             '200':
               description: Success
+{% endif %}{% if values.enableDatabase %}---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.name }}-db
+  description: PostgreSQL database for ${{ values.name }}, managed by CloudNativePG
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.name }}
+  tags:
+    - database
+    - postgresql
+    - cloudnative-pg
+  links:
+    - url: https://cloudnative-pg.io/
+      title: CloudNativePG Documentation
+spec:
+  type: database.cloudnative-pg
+  lifecycle: experimental
+  owner: user:default/${{ values.backstageUser }}
 {% endif %}
