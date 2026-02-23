@@ -25,6 +25,8 @@ spec:
   owner: user:default/${{ values.backstageUser }}
 {% if values.backend !== "none" %}  providesApis:
     - ${{ values.name }}-api
+{% endif %}{% if values.enableDatabase %}  dependsOn:
+    - resource:default/${{ values.name }}-db
 {% endif %}
 ---
 {% if values.backend !== "none" %}apiVersion: backstage.io/v1alpha1
