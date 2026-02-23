@@ -3,7 +3,7 @@ VENV   := .venv
 PY     := $(VENV)/bin/python
 PIP    := $(VENV)/bin/pip
 
-.PHONY: install build test lint run clean
+.PHONY: install build test lint run swagger clean
 
 install:
 	python3 -m venv $(VENV)
@@ -22,6 +22,10 @@ lint:
 
 run:
 	$(VENV)/bin/uvicorn main:app --reload --port 8000
+
+swagger:
+	mkdir -p docs
+	$(PY) -c "from main import app; import json; f=open('docs/openapi.json','w'); json.dump(app.openapi(), f, indent=2); f.close()"
 
 clean:
 	rm -rf $(VENV) .coverage coverage.xml __pycache__ .mypy_cache .ruff_cache

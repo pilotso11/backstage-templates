@@ -30,6 +30,16 @@ jobs:
           swag init --parseDependency --parseInternal -o docs
           go mod tidy
 
+      - name: Copy swagger JSON for catalog
+        run: cp docs/swagger.json docs/openapi.json
+
+      - name: Commit OpenAPI spec
+        if: {% raw %}${{ github.event_name == 'push' }}{% endraw %}
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update OpenAPI spec [skip ci]"
+          file_pattern: backend/docs/openapi.json backend/docs/swagger.json backend/docs/swagger.yaml backend/docs/docs.go
+
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -73,6 +83,18 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
+      - name: Generate OpenAPI spec
+        run: |
+          mkdir -p docs
+          python -c "from main import app; import json; f=open('docs/openapi.json','w'); json.dump(app.openapi(), f, indent=2); f.close()"
+
+      - name: Commit OpenAPI spec
+        if: {% raw %}${{ github.event_name == 'push' }}{% endraw %}
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update OpenAPI spec [skip ci]"
+          file_pattern: backend/docs/openapi.json
 
       - name: Lint (ruff)
         run: |
