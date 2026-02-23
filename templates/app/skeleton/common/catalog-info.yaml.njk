@@ -49,10 +49,8 @@ spec:
   type: openapi
   lifecycle: experimental
   owner: user:default/${{ values.backstageUser }}
-{% if values.backend == "fastapi" %}  definition:
-    $text: http://${{ values.name }}.${{ values.name }}.svc.cluster.local:8000/openapi.json
-{% elif values.backend == "gofiber" %}  definition:
-    $text: http://${{ values.name }}.${{ values.name }}.svc.cluster.local:8000/swagger/doc.json
+{% if values.backend == "fastapi" %}  definition: '$text: http://${{ values.name }}.${{ values.name }}.svc.cluster.local:8000/openapi.json'
+{% elif values.backend == "gofiber" %}  definition: '$text: http://${{ values.name }}.${{ values.name }}.svc.cluster.local:8000/swagger/doc.json'
 {% endif %}
 {% endif %}{% if values.enableDatabase %}---
 apiVersion: backstage.io/v1alpha1
