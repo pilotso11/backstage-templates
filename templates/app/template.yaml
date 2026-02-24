@@ -202,6 +202,6 @@ spec:
       - title: Repository
         url: ${{ steps['publish'].output.remoteUrl }}
       - title: Open in catalog
-        url: https://backstage.staging.oshers.com/catalog/default/component/${{ parameters.name }}
+        url: /catalog/default/component/${{ parameters.name }}
       - title: Cluster registration PR
         url: ${{ steps['register-with-flux'].output.pullRequestUrl }}
