@@ -49,7 +49,8 @@ spec:
   type: openapi
   lifecycle: experimental
   owner: user:default/${{ values.backstageUser }}
-{% if values.backend !== "none" %}  definition: '$text: https://github.com/${{ values.owner }}/${{ values.name }}/blob/main/docs/openapi.json'
+{% if values.backend !== "none" %}  definition:
+    $text: ./backend/docs/openapi.json
 {% endif %}
 {% endif %}{% if values.enableDatabase %}---
 apiVersion: backstage.io/v1alpha1
