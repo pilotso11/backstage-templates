@@ -2,7 +2,7 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: app-scaffolder
-  title: Full-Stack Application v0.0.48
+  title: Full-Stack Application v0.0.49
   description: >
     Composable full-stack app with optional frontend (React/Lit/TypeScript + Vite + Tailwind + Bun)
     and backend (GoFiber + OpenAPI or FastAPI + OpenAPI). Multi-arch Docker, coverage badges,
