@@ -62,10 +62,8 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 {% elif values.frontend !== "none" %}
 
-# -- Frontend-only: serve with nginx -------------------------------------------
-FROM nginx:alpine
-COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
-EXPOSE 80
-HEALTHCHECK CMD curl -f http://localhost/
+# -- Frontend-only: serve with Go Fiber static server -------------------------
+FROM pilotso11/static-server:latest
+COPY --from=frontend-builder /app/frontend/dist /app/dist
 
 {% endif %}
